@@ -6,6 +6,7 @@ use std::io::Write;
 use std::*;
 
 pub type Index = (String, u32);
+pub type IndexOffset = usize;
 
 pub fn load(idx: u32, file_path: &'static str, index_path: &'static str) -> Result<Index, ()> {
     // Open the binary file
@@ -13,7 +14,7 @@ pub fn load(idx: u32, file_path: &'static str, index_path: &'static str) -> Resu
     let reader = std::io::BufReader::new(index_file);
 
     // Deserialize the array of u16 from the file
-    let indexes: Vec<u16> = bincode::deserialize_from(reader).expect("error");
+    let indexes: Vec<IndexOffset> = bincode::deserialize_from(reader).expect("error");
 
     assert!(idx as usize <= indexes.len());
 
@@ -63,18 +64,19 @@ pub fn save(tuples: Vec<Index>, file_path: &'static str, index_path: &'static st
 
     // Since max size of linux file is 255 chars, u16 should be enough for all cases to store
     // an u32 and the file path
-    let mut offsets: Vec<u16> = vec![];
-    let mut total_size = 0;
+    let mut offsets: Vec<IndexOffset> = vec![];
+    let mut total_size: IndexOffset = 0;
 
     // Write the size of each tuple for indexing
     for data in &serialized_data {
-        let size = data.len() as u32;
+        let size = data.len() as IndexOffset;
         total_size += size;
-        offsets.push(total_size as u16);
+        offsets.push(total_size);
     }
 
     let encoded: Vec<u8> = bincode::serialize(&offsets).expect("cannot serialize");
     debug!("try to write indexes {offsets:?} encoded as: {encoded:?}");
+
     index.write_all(&encoded).expect("cannot write index");
     index.sync_all().expect("sync index");
 
