@@ -3,9 +3,19 @@ name = "rgvg"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "cg"
+path = "src/cg/main.rs"
+
+[[bin]]
+name = "vg"
+path = "src/vg/main.rs"
+
 [dependencies]
+bincode = "1.3.3"
 env_logger = { version = "0.10", default-features = false }
 log = "0.4.21"
+memmap2 = "0.9.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.117"
 tokio = { version = "1", features = ["full"] }

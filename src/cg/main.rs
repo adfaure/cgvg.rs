@@ -1,41 +1,13 @@
-use log::info;
+use log::{debug, info};
 use std::env;
+use std::*;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 
-use serde::{Deserialize, Serialize};
+use rgvg::common::{save, Index};
 
-#[derive(Serialize, Deserialize, Debug)]
-struct Text {
-    text: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct SubMatch {
-    #[serde(rename = "match")]
-    submatch: Text,
-    start: u32,
-    end: u32,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "snake_case")]
-#[serde(tag = "type", content = "data")]
-enum Match {
-    Begin {
-        path: Text,
-    },
-    Match {
-        path: Text,
-        lines: Text,
-        line_number: u32,
-        absolute_offset: u32,
-        submatches: Vec<SubMatch>,
-    },
-    End {
-        path: Text,
-    },
-}
+mod ripgrep_json;
+use ripgrep_json::Match;
 
 #[tokio::main]
 async fn main() {
@@ -54,9 +26,12 @@ async fn main() {
     let command = &args[1];
     let command_args = &args[2..];
 
+    // Log the command and its arguments
+    info!("Running command: {} {:?}", command, command_args.join(" "));
+
     let mut cmd = Command::new(command)
         .args(command_args)
-        // Instead check if it is already
+        //TODO: Instead check if the flag is already present
         .arg("--json")
         .stdout(std::process::Stdio::piped())
         .spawn()
@@ -68,13 +43,36 @@ async fn main() {
     // Use a buffered reader to read the lines asynchronously
     let mut reader = BufReader::new(stdout).lines();
 
-    // 
+    let mut idx = 0;
+    let mut file_and_line: Vec<Index> = vec![];
+
     while let Some(line) = reader.next_line().await.expect("Failed to read line") {
-        println!("Received line: {}", line);
-        println!("{:?}", serde_json::from_str::<Match>(&line))
+        debug!("Received line: {}", line);
+        debug!("{:?}", serde_json::from_str::<Match>(&line));
+        let matched = serde_json::from_str::<Match>(&line).ok().unwrap();
+
+        match matched {
+            Match::Match {
+                path,
+                lines,
+                line_number,
+                absolute_offset: _,
+                submatches: _,
+            } => {
+                idx += 1;
+                println!("{} {} {}\n\t{}", idx, path.text, line_number, lines.text);
+                file_and_line.push((path.text, line_number));
+            }
+            _ => {}
+        }
     }
+
+    let data_file = "file.bin";
+    let index_file = "index.bin";
+
+    save(file_and_line, data_file, index_file);
 
     // Ensure the command completes
     let status = cmd.wait().await.expect(""); //cmd.await.expect("Command wasn't running");
-    println!("Command finished with status: {}", status);
+    debug!("Command finished with status: {}", status);
 }
