@@ -59,9 +59,9 @@ async fn main() {
                 absolute_offset: _,
                 submatches: _,
             } => {
-                idx += 1;
                 println!("{} {} {}\n\t{}", idx, path.text, line_number, lines.text);
                 file_and_line.push((path.text, line_number));
+                idx += 1;
             }
             _ => {}
         }
