@@ -1,14 +1,16 @@
 use bincode;
+use itertools::*;
 use log::debug;
 use memmap2::Mmap;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
+use std::process::Command;
 use std::*;
 
 pub type Index = (String, u32);
 pub type IndexOffset = usize;
 
-pub fn load(idx: u32, file_path: &'static str, index_path: &'static str) -> Result<Index, ()> {
+pub fn load<'a>(idx: u32, file_path: &'a str, index_path: &'a str) -> Result<Index, ()> {
     // Open the binary file
     let index_file = File::open(index_path).expect("cannot open file");
     let reader = std::io::BufReader::new(index_file);
@@ -38,7 +40,7 @@ pub fn load(idx: u32, file_path: &'static str, index_path: &'static str) -> Resu
 }
 
 // First function that saves the entire Vec
-pub fn save(tuples: Vec<Index>, file_path: &'static str, index_path: &'static str) {
+pub fn save<'a>(tuples: Vec<Index>, file_path: &'a str, index_path: &'a str) {
     // Serialize tuples to a binary format
     let serialized_data: Vec<Vec<u8>> = tuples
         .iter()
@@ -53,7 +55,7 @@ pub fn save(tuples: Vec<Index>, file_path: &'static str, index_path: &'static st
         .write(true)
         .truncate(true)
         .open(file_path)
-        .expect("cannot open file");
+        .expect(&format!("cannot open file {}", &file_path));
 
     let mut index = OpenOptions::new()
         .create(true)
@@ -86,4 +88,20 @@ pub fn save(tuples: Vec<Index>, file_path: &'static str, index_path: &'static st
     }
 
     file.sync_all().expect("cannot sync");
+}
+
+/// Very adhoc function since I need to expand two paths
+pub fn expand_paths<'a>(path1: &'a str, path2: &'a str) -> Result<(String, String), String> {
+    let expand_tild = Command::new("sh")
+        .arg("-c")
+        .arg(format!("echo {} {}", path1, path2))
+        .output();
+
+    let (p1, p2) = String::from_utf8(expand_tild.expect("Command failed to run").stdout)
+        .unwrap()
+        .split_whitespace()
+        .map(|s| String::from(s)).collect_tuple().unwrap();
+
+    Ok((p1, p2))
+
 }
