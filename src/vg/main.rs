@@ -1,5 +1,6 @@
 use rgvg::common::load;
 use std::env;
+use clap::Parser;
 use log::debug;
 
 use std::ffi::CString;
@@ -9,8 +10,19 @@ extern "C" {
     fn execvp(path: *const libc::c_char, argv: *const *const libc::c_char) -> libc::c_int;
 }
 
+/// Simple program to greet a person
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Selection number from previous rg command
+    seletion: u32,
+}
+
 fn main() {
     env_logger::init();
+
+    let args = Args::parse();
+    debug!("{args:?}");
 
     let key = "EDITOR";
     let editor = match env::var(key) {
@@ -45,9 +57,7 @@ fn main() {
     let mut args_ptrs: Vec<*const libc::c_char> =
         splitted_args.iter().map(|arg| arg.as_ptr()).collect();
 
-
     args_ptrs.push(ptr::null());
-    println!("{:?} -- {:?}", splitted_args, args_ptrs);
 
     let command = CString::new(editor).expect("cannot create cstring for program");
 
