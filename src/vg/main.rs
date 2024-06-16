@@ -39,7 +39,17 @@ fn main() {
     let result = load(selected, data_file, index_file).unwrap();
     debug!("retrieved tuple: {result:?}");
 
-    let open_format = String::from("{EDITOR} +{LINE} {PATH}");
+    let open_format = match editor.as_str() {
+        "vim" | "vi" | "nvim" | "emacs" => {
+            String::from("{EDITOR} +{LINE} {PATH}")
+        },
+        "code" | "codium" => {
+            String::from("{EDITOR} -g {PATH}:{LINE}")
+        },
+        _ => {
+            panic!("No rule for editor: {editor:?}");
+        }
+    };
 
     let mut command_args: String = open_format.replace("{LINE}", &result.1.to_string());
     command_args = command_args.replace("{EDITOR}", &editor);
