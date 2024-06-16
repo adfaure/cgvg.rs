@@ -1,6 +1,6 @@
 use clap::Parser;
 use log::debug;
-use rgvg::common::load;
+use rgvg::common::{expand_paths, load};
 use std::env;
 use std::fs;
 use std::process::{Command, ExitCode};
@@ -91,15 +91,14 @@ fn main() -> ExitCode {
         },
     };
 
-    let data_file = &args.match_file;
-    let index_file = &args.index_file;
+    let (match_file, index_file) = expand_paths(&args.match_file, &args.index_file).unwrap();
 
-    match (fs::metadata(&data_file), fs::metadata(&index_file)) {
+    match (fs::metadata(&match_file), fs::metadata(&index_file)) {
         (Ok(_), Ok(_)) => {}
         (Err(_), _) | (_, Err(_)) => {
             eprintln!(
                 "Could not find state files {} or {}. Did you use vg without rg?",
-                index_file, data_file
+                index_file, match_file
             );
             return ExitCode::from(1);
         }
@@ -107,7 +106,7 @@ fn main() -> ExitCode {
 
     let selected = args.seletion;
 
-    let result = load(selected, data_file, index_file).unwrap();
+    let result = load(selected, &match_file, &index_file).unwrap();
 
     // Replacing the placeholders
     let mut command_args: String = open_format.replace("{LINE}", &result.1.to_string());

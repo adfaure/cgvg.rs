@@ -77,7 +77,7 @@ pub fn save<'a>(tuples: Vec<Index>, file_path: &'a str, index_path: &'a str) {
     }
 
     let encoded: Vec<u8> = bincode::serialize(&offsets).expect("cannot serialize");
-    debug!("try to write indexes {offsets:?} encoded as: {encoded:?}");
+    // debug!("try to write indexes {offsets:?} encoded as: {encoded:?}");
 
     index.write_all(&encoded).expect("cannot write index");
     index.sync_all().expect("sync index");
@@ -92,6 +92,8 @@ pub fn save<'a>(tuples: Vec<Index>, file_path: &'a str, index_path: &'a str) {
 
 /// Very adhoc function since I need to expand two paths
 pub fn expand_paths<'a>(path1: &'a str, path2: &'a str) -> Result<(String, String), String> {
+    // Yuck using sh to expand the path to handle path constructed with ~ or variabale ($HOME)
+    // We might consider one of these options: https://blog.liw.fi/posts/2021/10/12/tilde-expansion-crates/ (a bit outdated though)
     let expand_tild = Command::new("sh")
         .arg("-c")
         .arg(format!("echo {} {}", path1, path2))
@@ -100,8 +102,9 @@ pub fn expand_paths<'a>(path1: &'a str, path2: &'a str) -> Result<(String, Strin
     let (p1, p2) = String::from_utf8(expand_tild.expect("Command failed to run").stdout)
         .unwrap()
         .split_whitespace()
-        .map(|s| String::from(s)).collect_tuple().unwrap();
+        .map(|s| String::from(s))
+        .collect_tuple()
+        .unwrap();
 
     Ok((p1, p2))
-
 }

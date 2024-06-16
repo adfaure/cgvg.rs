@@ -20,6 +20,11 @@ struct Args {
     /// Place match file of rgvg
     #[arg(short, long, default_value = "~/.cgvg.match")]
     match_file: String,
+    /// rg command to use. rg needs to be installed and in your PATH for cg to be able to find it.
+    // trailing_var_arg tells clap to stop parsing and collecting
+    // everything as if the user would have provided --
+    #[arg(trailing_var_arg = true, required = true)]
+    rg: Vec<String>,
 }
 
 #[tokio::main]
@@ -27,14 +32,14 @@ async fn main() -> ExitCode {
     env_logger::init();
 
     let args = Args::parse();
+    debug!("{:?}", args);
 
     // The first argument is the command, and the rest are its arguments
-    let command = "rg";
-    let command_args = vec!["--sort", "path", "dbqezrazr.", "/home/adfaure/code/oar3"];
+    let command = &args.rg[0];
+    let command_args = &args.rg[1..];
 
     // Log the command and its arguments
     info!("Running command: {} {:?}", command, command_args.join(" "));
-
 
     let mut cmd = Command::new(command)
         .args(command_args)
