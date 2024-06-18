@@ -21,6 +21,31 @@
         drv = self.defaultPackage."${system}";
       };
 
+      packages = {
+        cgvg = pkgs.rustPlatform.buildRustPackage rec {
+          pname = "cgvg.rs";
+          version = "0.0.1";
+
+          src = pkgs.fetchFromGitHub {
+            owner = "adfaure";
+            repo = "${pname}";
+            rev = "refs/heads/main";
+            sha256 = "sha256-O2ZaBU7YWlQdmItv895U9B5/kQcgHFCBjPUQg5ilt6k=";
+          };
+
+          cargoHash = "sha256-qFCHngWcWmZCV7jAa8pvDuhd/CSsS7Q8EC+qyggosLk=";
+
+          meta = with pkgs.lib; {
+            description = "";
+            longDescription = '''';
+            homepage = "https://github.com/adfaure/cgvg.rs";
+            license = licenses.mit;
+            platforms = platforms.all;
+            broken = false;
+          };
+        };
+      };
+
       devShell = with pkgs;
         mkShell rec {
           buildInputs = [

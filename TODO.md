@@ -5,7 +5,7 @@
 - [ ] Write tests
 - [ ] configuration file
 - [x] Cli ?
-- [ ] Packaging
+- [x] Packaging
 - [ ] Find a name
 
 # CG
