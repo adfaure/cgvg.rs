@@ -9,8 +9,8 @@
 - [ ] Find a name
 
 # CG
-- [ ] Stdin version
 - [ ] Colored output
+- [ ] Stdin version
 
 # VG
 - [x] Handles editors (sublime, vim, emacs, vscode)

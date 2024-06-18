@@ -1,11 +1,12 @@
 use clap::Parser;
+use colored::Colorize;
 use log::{debug, info};
+use rgvg::common::{expand_paths, save, Index};
 use std::process::ExitCode;
 use std::*;
+use terminal_size::{terminal_size, Height, Width};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
-
-use rgvg::common::{expand_paths, save, Index};
 
 mod ripgrep_json;
 use ripgrep_json::Match;
@@ -30,6 +31,13 @@ struct Args {
 #[tokio::main]
 async fn main() -> ExitCode {
     env_logger::init();
+
+    let size = terminal_size();
+    if let Some((Width(w), Height(h))) = size {
+        debug!("Your terminal is {} cols wide and {} lines tall", w, h);
+    } else {
+        debug!("Unable to get terminal size");
+    }
 
     let args = Args::parse();
     debug!("{:?}", args);
@@ -64,16 +72,43 @@ async fn main() -> ExitCode {
         let matched = serde_json::from_str::<Match>(&line).ok().unwrap();
 
         match matched {
+            Match::Begin { path } => {
+                println!("{}", path.text.red());
+            }
             Match::Match {
                 path,
                 lines,
                 line_number,
                 absolute_offset: _,
-                submatches: _,
+                submatches: submatches,
             } => {
-                println!("{} {} {}\n\t{}", idx, path.text, line_number, lines.text);
+                let colored_idx = format!("{idx}").cyan();
+                let colored_line_number = format!("{line_number}").red();
+
+                let mut color_submatches = String::from("");
+                let mut remaining = String::from(lines.text.trim());
+                let mut cursor = 0;
+
+                for submatch in submatches.iter() {
+                    let begin = String::from(&remaining[0..(submatch.start - cursor)]);
+                    let submatch_str = format!("{}", remaining[(submatch.start - cursor)..(submatch.end - cursor)].red().bold());
+
+                    remaining = String::from(&remaining[(submatch.end - cursor)..]);
+                    cursor = submatch.end;
+
+                    color_submatches = format!("{color_submatches}{begin}{submatch_str}");
+                }
+
+                println!(
+                    "{}: {}  {}",
+                    colored_idx, color_submatches, colored_line_number
+                );
+
                 file_and_line.push((path.text, line_number));
                 idx += 1;
+            }
+            Match::End { path: _ } => {
+                println!("");
             }
             _ => {}
         }
