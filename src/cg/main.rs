@@ -80,28 +80,28 @@ async fn main() -> ExitCode {
                 lines,
                 line_number,
                 absolute_offset: _,
-                submatches: submatches,
+                submatches,
             } => {
-                let colored_idx = format!("{idx}").cyan();
-                let colored_line_number = format!("{line_number}").red();
+                let colored_idx = format!("{idx}").yellow();
+                let colored_line_number = format!("{line_number}").cyan();
 
                 let mut color_submatches = String::from("");
-                let mut remaining = String::from(lines.text.trim());
+                let remaining = String::from(lines.text.trim_end_matches('\n'));
                 let mut cursor = 0;
-
                 for submatch in submatches.iter() {
-                    let begin = String::from(&remaining[0..(submatch.start - cursor)]);
-                    let submatch_str = format!("{}", remaining[(submatch.start - cursor)..(submatch.end - cursor)].red().bold());
+                    // println!("match: {lines:?}, {}, start: {}", remaining, submatch.start);
+                    let begin = String::from(&remaining[cursor..submatch.start]);
+                    let submatch_str = format!("{}", remaining[submatch.start..submatch.end].red().bold());
 
-                    remaining = String::from(&remaining[(submatch.end - cursor)..]);
                     cursor = submatch.end;
 
                     color_submatches = format!("{color_submatches}{begin}{submatch_str}");
                 }
 
+                color_submatches = format!("{color_submatches}{}", &remaining[cursor..]);
+
                 println!(
-                    "{}: {}  {}",
-                    colored_idx, color_submatches, colored_line_number
+                    "{colored_idx}: {colored_line_number}l:  {color_submatches}",
                 );
 
                 file_and_line.push((path.text, line_number));
