@@ -28,6 +28,50 @@ struct Args {
     rg: Vec<String>,
 }
 
+pub fn match_view(matched: &Match, idx: &usize) -> Option<String> {
+    match matched {
+        Match::Begin { path } => {
+            return Some(format!("{}", path.text.red()));
+        }
+        Match::Match {
+            path: _,
+            lines,
+            line_number,
+            absolute_offset: _,
+            submatches,
+        } => {
+            let colored_idx = format!("{idx}").yellow();
+            let colored_line_number = format!("{line_number}").cyan();
+
+            let mut color_submatches = String::from("");
+            let remaining = String::from(lines.text.trim_end_matches('\n'));
+            let mut cursor = 0;
+            for submatch in submatches.iter() {
+                // println!("match: {lines:?}, {}, start: {}", remaining, submatch.start);
+                let begin = String::from(&remaining[cursor..submatch.start]);
+                let submatch_str =
+                    format!("{}", remaining[submatch.start..submatch.end].red().bold());
+
+                cursor = submatch.end;
+
+                color_submatches = format!("{color_submatches}{begin}{submatch_str}");
+            }
+
+            color_submatches = format!("{color_submatches}{}", &remaining[cursor..]);
+
+            let result = format!("{colored_idx}: {colored_line_number}l:  {color_submatches}",);
+
+            return Some(result);
+        }
+        Match::End { path: _ } => {
+            return Some(format!(""));
+        }
+        _ => {
+            return None;
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> ExitCode {
     env_logger::init();
@@ -72,46 +116,25 @@ async fn main() -> ExitCode {
         let matched = serde_json::from_str::<Match>(&line).ok().unwrap();
 
         match matched {
-            Match::Begin { path } => {
-                println!("{}", path.text.red());
-            }
             Match::Match {
-                path,
-                lines,
+                ref path,
+                lines: _,
                 line_number,
                 absolute_offset: _,
-                submatches,
+                submatches: _,
             } => {
-                let colored_idx = format!("{idx}").yellow();
-                let colored_line_number = format!("{line_number}").cyan();
-
-                let mut color_submatches = String::from("");
-                let remaining = String::from(lines.text.trim_end_matches('\n'));
-                let mut cursor = 0;
-                for submatch in submatches.iter() {
-                    // println!("match: {lines:?}, {}, start: {}", remaining, submatch.start);
-                    let begin = String::from(&remaining[cursor..submatch.start]);
-                    let submatch_str = format!("{}", remaining[submatch.start..submatch.end].red().bold());
-
-                    cursor = submatch.end;
-
-                    color_submatches = format!("{color_submatches}{begin}{submatch_str}");
-                }
-
-                color_submatches = format!("{color_submatches}{}", &remaining[cursor..]);
-
-                println!(
-                    "{colored_idx}: {colored_line_number}l:  {color_submatches}",
-                );
-
-                file_and_line.push((path.text, line_number));
+                file_and_line.push((path.text.to_string(), line_number));
                 idx += 1;
             }
-            Match::End { path: _ } => {
-                println!("");
-            }
             _ => {}
-        }
+        };
+
+        match match_view(&matched, &idx) {
+            Some(text) => {
+                println!("{text}")
+            }
+            None => {}
+        };
     }
 
     // Ensure the command completes
