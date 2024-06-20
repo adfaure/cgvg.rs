@@ -50,16 +50,19 @@ pub fn match_view(matched: &Match, idx: &usize) -> Option<String> {
                 // println!("match: {lines:?}, {}, start: {}", remaining, submatch.start);
                 let begin = String::from(&remaining[cursor..submatch.start]);
                 let submatch_str =
-                    format!("{}", remaining[submatch.start..submatch.end].red().bold());
+                    format!("{}", remaining[submatch.start..submatch.end].bright_green().bold());
 
                 cursor = submatch.end;
 
                 color_submatches = format!("{color_submatches}{begin}{submatch_str}");
             }
 
-            color_submatches = format!("{color_submatches}{}", &remaining[cursor..]);
+            color_submatches = format!(
+                "{color_submatches}{}",
+                &remaining[cursor..].to_string()
+            );
 
-            let result = format!("{colored_idx}: {colored_line_number}l:  {color_submatches}",);
+            let result = format!("{colored_idx}:{colored_line_number}\t{color_submatches}",);
 
             return Some(result);
         }
