@@ -1,5 +1,5 @@
 use clap::Parser;
-use colored::Colorize;
+use colored::{ColoredString, Colorize};
 use itertools::FoldWhile::{Continue, Done};
 use itertools::Itertools;
 use log::{debug, info};
@@ -32,7 +32,7 @@ struct Args {
 
 pub fn match_view(matched: &Match, idx: &usize) -> Option<String> {
     let result = match matched {
-        Match::Begin { path } => Some(format!("{}", path.text.red())),
+        Match::Begin { path } => Some((None, format!("{}", path.text.red()))),
         Match::Match {
             path: _,
             lines,
@@ -62,82 +62,100 @@ pub fn match_view(matched: &Match, idx: &usize) -> Option<String> {
 
             let result = color_submatches;
 
-            Some(result)
+            Some((Some(line_number), result))
         }
-        Match::End { path: _ } => Some(format!("")),
+        Match::End { path: _ } => Some((None, format!(""))),
         _ => None,
     };
 
     let colored_idx = format!("{idx}").yellow();
 
     match &result {
-        Some(text) => {
+        Some((Some(line_number), text)) => {
             let size = terminal_size();
             if let Some((Width(w), Height(h))) = size {
                 let mut result = "".to_string();
+
                 for s in wrap_text(text, w as usize).iter() {
                     result = format!("{result}{s}\n");
                 }
+
                 return Some(result);
             } else {
                 debug!("Unable to get terminal size");
             }
+
+            return None
         }
-        None => {}
+        Some((None, text)) => return Some(text.to_string()),
+        None => {return None}
     };
 
-    return result;
+}
+
+pub fn iter_colored(string: &str) -> impl Iterator<Item = String> + '_ {
+    string.chars().batching(|it| {
+        match it.next() {
+            Some(t) => {
+                if t == '\u{1b}' {
+                    let s: String = it.take_while(|c| *c != 'm').collect();
+                    // Since take_while consumes the first false, we mannually add the 'm'
+                    Some(format!("{t}{s}m"))
+                } else {
+                    Some(t.to_string())
+                }
+            }
+            None => None,
+        }
+    })
 }
 
 pub fn wrap_text<'a>(text: &'a str, max_length: usize) -> Vec<String> {
-    // let array = text.chars().collect::<Vec<_>>();
-    let mut memory = None;
+    let mut memory: Vec<String> = vec![];
 
-    let wrapped = text
-        .chars()
+    let wrapped = iter_colored(text)
         .batching(|it| {
-            let (_, temp, _) = it
-                .fold_while(
-                    (0, vec![], false),
-                    |(length, mut acc, wait_end_of_escape_sequence), c| {
-                        let mut new_length = length;
-                        match memory {
-                            Some(c) => {
-                                acc.push(c);
-                                memory = None;
-                                new_length += 1;
-                            }
-                            _ => {}
-                        };
+            let (len, temp) = it
+                .fold_while((0, memory.clone()), |(length, mut acc), c| {
+                    let mut new_length = length;
 
-                        // println!("top: {length} {acc:?} {c:?}");
+                    // if !memory.is_empty() {
+                    //     acc.extend(memory.clone().into_iter());
+                    // };
 
-                        if wait_end_of_escape_sequence {
-                            acc.push(c);
-                            return Continue((length, acc, c != 'm'));
-                        }
+                    acc.push(c.clone());
 
-                        if c == '\u{1b}' {
-                            acc.push(c);
-                            return Continue((length, acc, true));
-                        }
-
+                    if !c.starts_with('\u{1b}') {
                         new_length += 1;
-
-                        if new_length > max_length {
-                            memory = Some(c);
-                            Done((new_length, acc, wait_end_of_escape_sequence))
-                        } else {
-                            acc.push(c);
-                            Continue((new_length, acc, wait_end_of_escape_sequence))
+                    } else {
+                        match c.as_str() {
+                            "\u{1b}[0m" => {
+                                memory.clear();
+                            }
+                            _ => {
+                                memory.push(c.clone());
+                            }
                         }
-                    },
-                )
+                    }
+
+                    if new_length == max_length {
+                        if !memory.is_empty() {
+                            memory = memory.clone();
+                            acc.push("\u{1b}[0m".to_string());
+                        }
+
+                        Done((new_length, acc))
+                    } else {
+                        Continue((new_length, acc))
+                    }
+                })
                 .into_inner();
 
             let line: String = temp.into_iter().collect();
 
-            if line.is_empty() {
+            // If len is 0 then the string contains remaining style
+            // harder to clean than to ignore, and I think ignoring wont change the style
+            if len == 0 {
                 None
             } else {
                 Some(line)
@@ -242,15 +260,56 @@ mod tests {
         let blue = format!("aaaaabbbbbzzzzz").blue().to_string();
 
         let res = wrap_text(&blue, 5);
-        assert_eq!(vec!["\u{1b}[34maaaaa", "bbbbb", "zzzzz\u{1b}[0m"], res);
+        assert_eq!(
+            vec![
+                "\u{1b}[34maaaaa\u{1b}[0m",
+                "\u{1b}[34mbbbbb\u{1b}[0m",
+                "\u{1b}[34mzzzzz\u{1b}[0m"
+            ],
+            res
+        );
 
-        let blue_bold_underline = format!("aaaaabbbbbzzzzz").blue().bold().underline().to_string();
+        let blue_bold_underline = format!("aaaaabbbbbzzzzz")
+            .blue()
+            .bold()
+            .underline()
+            .to_string();
+
         let res = wrap_text(&blue_bold_underline, 5);
-        assert_eq!(vec!["\u{1b}[1;4;34maaaaa", "bbbbb", "zzzzz\u{1b}[0m"], res);
 
-        let blue_bold_underline = format!("{}{}{}", "aaaaa".blue(), "zzzzz".bold(), "bbbbb".underline());
+        assert_eq!(
+            vec![
+                "\u{1b}[1;4;34maaaaa\u{1b}[0m",
+                "\u{1b}[1;4;34mbbbbb\u{1b}[0m",
+                "\u{1b}[1;4;34mzzzzz\u{1b}[0m"
+            ],
+            res
+        );
+
+        let begin = format!("{}", "aaaaa".to_string().blue());
+        let middle = format!("{}", "bbbbb".to_string().white());
+        let end = format!("{}", "zzzzz".to_string().red());
+
+        let blue_bold_underline = format!("{begin}{middle}{end}").underline().to_string();
+
         let res = wrap_text(&blue_bold_underline, 5);
-        assert_eq!(vec!["\u{1b}[34maaaaa\u{1b}[0m\u{1b}[1m", "zzzzz\u{1b}[0m\u{1b}[4m", "bbbbb\u{1b}[0m" ], res);
+        assert_eq!(
+            vec![
+                "\u{1b}[4m\u{1b}[34maaaaa\u{1b}[0m",
+                "\u{1b}[4m\u{1b}[34m\u{1b}[0m\u{1b}[4m\u{1b}[37mbbbbb\u{1b}[0m",
+                "\u{1b}[4m\u{1b}[37m\u{1b}[0m\u{1b}[4m\u{1b}[31mzzzzz\u{1b}[0m"
+            ],
+            res
+        );
+    }
 
+    #[test]
+    fn test_iter_colored() {
+        let blue_bold_underline = format!("abz").blue().bold().underline().to_string();
+
+        assert_eq!(
+            vec!["\u{1b}[1;4;34m", "a", "b", "z", "\u{1b}[0m"],
+            iter_colored(&blue_bold_underline).collect::<Vec<String>>()
+        );
     }
 }
