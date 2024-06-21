@@ -12,10 +12,11 @@
 - [x] Colored output
 - [ ] Stdin version
 - [ ] Handle small terminal_size
-- [ ] Add style map
+- [ ] Customize color
 - [ ] Add different "view"
     - One view like cg (culumns), but we might need to wait for all results
 - [ ] Find the list of RG usage that we are not suporting
+    - Looks like the option `--json` overrides some behaviors
 
 
 # VG
