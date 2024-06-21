@@ -30,10 +30,10 @@
             owner = "adfaure";
             repo = "${pname}";
             rev = "refs/heads/main";
-            sha256 = "sha256-O2ZaBU7YWlQdmItv895U9B5/kQcgHFCBjPUQg5ilt6k=";
+            sha256 = "sha256-vAYQq8XAEKdTvxQ7t3neRmwKDPu4UNsXHE/n8hSKFxo=";
           };
 
-          cargoHash = "sha256-qFCHngWcWmZCV7jAa8pvDuhd/CSsS7Q8EC+qyggosLk=";
+          cargoHash = "sha256-Jk+xGNhLQp7x3c13sDwrn8jz+9OgPhPXjaMAbHKLfM0=";
 
           meta = with pkgs.lib; {
             description = "";
