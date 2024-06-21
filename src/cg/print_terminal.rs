@@ -92,6 +92,7 @@ pub fn wrap_text<'a>(text: &'a str, max_length: &usize, tab_size: &usize) -> Vec
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
+    use colored::Colorize;
 
     #[test]
     fn test_wrap_text() {
