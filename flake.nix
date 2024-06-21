@@ -22,7 +22,7 @@
       };
 
       packages = {
-        cgvg = pkgs.rustPlatform.buildRustPackage rec {
+        cgvg-rs = pkgs.rustPlatform.buildRustPackage rec {
           pname = "cgvg.rs";
           version = "0.0.1";
 
