@@ -145,6 +145,13 @@ async fn main() -> ExitCode {
         debug!("{:?}", serde_json::from_str::<Match>(&line));
         let matched = serde_json::from_str::<Match>(&line).ok().unwrap();
 
+        match match_view(&matched, &idx, &(terminal_size.0 as usize)) {
+            Some(text) => {
+                println!("{text}")
+            }
+            None => {}
+        };
+
         match matched {
             Match::Match {
                 ref path,
@@ -157,13 +164,6 @@ async fn main() -> ExitCode {
                 idx += 1;
             }
             _ => {}
-        };
-
-        match match_view(&matched, &idx, &(terminal_size.0 as usize)) {
-            Some(text) => {
-                println!("{text}")
-            }
-            None => {}
         };
     }
 

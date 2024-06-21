@@ -9,8 +9,14 @@
 - [ ] Find a name
 
 # CG
-- [ ] Colored output
+- [x] Colored output
 - [ ] Stdin version
+- [ ] Handle small terminal_size
+- [ ] Add style map
+- [ ] Add different "view"
+    - One view like cg (culumns), but we might need to wait for all results
+- [ ] Find the list of RG usage that we are not suporting
+
 
 # VG
 - [x] Handles editors (sublime, vim, emacs, vscode)
