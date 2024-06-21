@@ -78,11 +78,11 @@ pub fn match_view(matched: &Match, idx: &usize, terminal_size: &usize) -> Option
             let idx_len = number_of_digits(&idx);
 
             let prefix = format!(
-                "{}\t{}\t",
+                "{}    {}    ",
                 idx.to_string().cyan(),
                 line_number.to_string().magenta()
             );
-            let prefix_size = line_number_len + idx_len + 16;
+            let prefix_size = line_number_len + idx_len + 8;
 
             let padding = std::iter::repeat(" ")
                 .take(prefix_size - 1)
@@ -138,7 +138,7 @@ async fn main() -> ExitCode {
 
     let mut idx = 0;
     let mut file_and_line: Vec<Index> = vec![];
-    println!("terminal size= {:?}", terminal_size);
+    debug!("terminal size= {:?}", terminal_size);
 
     while let Some(line) = reader.next_line().await.expect("Failed to read line") {
         debug!("Received line: {}", line);
