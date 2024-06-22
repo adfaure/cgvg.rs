@@ -19,7 +19,6 @@
 - [ ] Find the list of RG usage that we are not suporting
     - Looks like the option `--json` overrides some behaviors
 
-
 # VG
 - [x] Handles editors (sublime, vim, emacs, vscode)
 - [x] generic format (with command ?)

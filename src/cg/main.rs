@@ -1,4 +1,4 @@
-use clap::{Parser, error::ErrorKind};
+use clap::{error::ErrorKind, Parser};
 use log::{debug, info};
 use regex::Regex;
 use rgvg::common::{expand_path, save_text, Index};
@@ -56,7 +56,7 @@ async fn main() -> ExitCode {
                 ErrorKind::DisplayHelp => {
                     println!("{}", err);
                     return ExitCode::from(0);
-                },
+                }
                 _ => {
                     let args: Vec<String> = env::args().skip(1).collect();
                     info!("Fail to parse commandline, falling back to rg command.");
