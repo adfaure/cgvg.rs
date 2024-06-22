@@ -18,10 +18,7 @@ use crate::{number_of_digits, wrap_text};
 pub fn match_view_online(matched: &Match, idx: &usize, terminal_size: &usize) -> Option<String> {
     let colored_match = color_match(matched);
     let line_number = match matched {
-        Match::Match {
-            line_number,
-            ..
-        } => Some(*line_number),
+        Match::Match { line_number, .. } => Some(*line_number),
         _ => None,
     };
 
@@ -29,46 +26,72 @@ pub fn match_view_online(matched: &Match, idx: &usize, terminal_size: &usize) ->
 
     match &result {
         (Some(line_number), Some(text)) => {
-            return padding_and_wrap(&text, line_number, idx, terminal_size);
+            padding_and_wrap(&text, line_number, idx, terminal_size, None, None)
         }
-        (None, Some(text)) => return Some(text.to_string()),
+        (None, Some(text)) => Some(text.to_string()),
         _ => None,
     }
 }
 
-pub fn padding_and_wrap(colored_text: &String, line_number: &u32, idx: &usize, terminal_size: &usize) -> Option<String> {
-            let mut result = "".to_string();
+pub fn padding_and_wrap(
+    colored_text: &String,
+    line_number: &u32,
+    idx: &usize,
+    terminal_size: &usize,
+    line_number_max_digits: Option<usize>,
+    idx_max_digits: Option<usize>,
+) -> Option<String> {
+    let mut result = "".to_string();
 
-            let line_number_len = number_of_digits(&(*line_number as usize));
-            let idx_len = number_of_digits(&idx);
+    let line_number_len = number_of_digits(&(*line_number as usize));
+    let idx_len = number_of_digits(&idx);
 
-            let prefix = format!(
-                "{}    {}    ",
-                idx.to_string().cyan(),
-                line_number.to_string().magenta()
-            );
-            let prefix_size = line_number_len + idx_len + 8;
+    let line_number_str = match line_number_max_digits {
+        Some(max) if max > line_number_len => {
+            let diff = max - line_number_len;
+            let padding = std::iter::repeat(" ").take(diff).collect::<String>();
+            format!("{}{}", line_number, padding)
+        }
+        _ => {
+            format!("{}", line_number)
+        }
+    };
 
-            let padding = std::iter::repeat(" ")
-                .take(prefix_size - 1)
-                .collect::<String>();
+    let idx_str = match idx_max_digits {
+        Some(max) if max > idx_len => {
+            let diff = max - idx_len;
+            let padding = std::iter::repeat(" ").take(diff).collect::<String>();
+            format!("{}{}", idx, padding)
+        }
+        _ => {
+            format!("{}", idx)
+        }
+    };
 
-            let text_size = terminal_size - prefix_size;
+    let prefix = format!("{}    {}    ", idx_str.cyan(), line_number_str.magenta());
 
-            for (line, s) in wrap_text(&colored_text, &text_size, &8).iter().enumerate() {
-                if line == 0 {
-                    result = format!("{prefix}{s}\n");
-                } else {
-                    result = format!("{result}{padding} {s}\n");
-                }
-            }
+    let prefix_size =
+        idx_max_digits.unwrap_or(idx_len) + line_number_max_digits.unwrap_or(line_number_len) + 8;
 
-            return Some(result);
+    let padding = std::iter::repeat(" ")
+        .take(prefix_size - 1)
+        .collect::<String>();
+
+    let text_size = terminal_size - prefix_size;
+
+    for (line, s) in wrap_text(&colored_text, &text_size, &8).iter().enumerate() {
+        if line == 0 {
+            result = format!("{prefix}{s}\n");
+        } else {
+            result = format!("{result}{padding} {s}\n");
+        }
+    }
+
+    return Some(result);
 }
 
 pub fn color_match(m: &Match) -> Option<String> {
     let result = match m {
-        Match::Begin { path } => Some(format!("{}\n", path.text.red())),
         Match::Match {
             path: _,
             lines,
@@ -85,7 +108,9 @@ pub fn color_match(m: &Match) -> Option<String> {
                 let begin = String::from(&matched_text[cursor..submatch.start]).bright_green();
                 let submatch_str = format!(
                     "{}",
-                    matched_text[submatch.start..submatch.end].yellow().bold()
+                    matched_text[submatch.start..submatch.end]
+                        .bright_yellow()
+                        .bold()
                 );
 
                 cursor = submatch.end;
@@ -102,24 +127,65 @@ pub fn color_match(m: &Match) -> Option<String> {
 
             Some(result)
         }
-        Match::End { path: _ } => Some(format!("")),
-        _ => None,
+        _ => {
+            panic!("")
+        }
     };
 
     result
 }
 
-pub fn match_view(matched: &Vec<(Match, u32)>, terminal_size: &usize) -> Option<String> {
+pub fn match_view(matched: &Vec<(Match, u32)>, terminal_size: &usize) {
     let (mut max_idx, mut max_line) = (0, 0);
     for (m, idx) in matched.iter() {
         match m {
             Match::Match { line_number, .. } => {
-                max_idx = std::cmp::max(max_idx, *idx);
-                max_line = std::cmp::max(max_line, *line_number);
+                max_idx = std::cmp::max(max_idx, number_of_digits(&(*idx as usize)));
+                max_line = std::cmp::max(max_line, number_of_digits(&(*line_number as usize)));
             }
             _ => {}
         };
     }
 
-    None
+    for m in matched.iter() {
+        let (record, idx) = m;
+        match &record {
+            Match::Match { .. } => {
+                let colored_match = color_match(&record);
+                let line_number = match record {
+                    Match::Match { line_number, .. } => Some(line_number),
+                    _ => None,
+                };
+
+                let result = (line_number, colored_match);
+
+                let line_to_print = match &result {
+                    (Some(line_number), Some(text)) => padding_and_wrap(
+                        &text,
+                        line_number,
+                        &(*idx as usize),
+                        terminal_size,
+                        Some(max_line as usize),
+                        Some(max_idx as usize),
+                    ),
+                    (None, Some(text)) => Some(text.to_string()),
+                    _ => None,
+                };
+
+                match line_to_print {
+                    Some(line) => {
+                            print!("{line}");
+                    }
+                    None => {}
+                };
+            }
+            Match::Begin { path } => {
+                print!("{}\n", path.text.red());
+            }
+            Match::End { .. } => {
+                print!("\n");
+            }
+            _ => {}
+        };
+    }
 }

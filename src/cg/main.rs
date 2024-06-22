@@ -9,7 +9,7 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 
 mod views;
-use views::match_view_online;
+use views::match_view;
 
 mod ripgrep_json;
 use ripgrep_json::Match;
@@ -156,14 +156,7 @@ async fn main() -> ExitCode {
         };
     }
 
-    for m in matches {
-        match match_view_online(&m.0, &m.1, &(terminal_size.0 as usize)) {
-            Some(text) => {
-                print!("{text}")
-            }
-            None => {}
-        };
-    }
+    match_view(&matches, &(terminal_size.0 as usize));
 
     // Ensure the command completes
     let status = cmd.wait().await.expect("");
