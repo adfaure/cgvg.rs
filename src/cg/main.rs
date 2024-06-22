@@ -1,8 +1,8 @@
 use clap::Parser;
 use colored::Colorize;
 use log::{debug, info};
+use regex::Regex;
 use rgvg::common::{expand_paths, save, Index};
-use std::*;
 use std::process::ExitCode;
 use terminal_size::terminal_size;
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -24,6 +24,10 @@ struct Args {
     /// Place match file of rgvg
     #[arg(short, long, default_value = "~/.cgvg.match")]
     match_file: String,
+    /// Binary name of rg, or path
+    #[arg(short, long, default_value = "rg")]
+    rg_bin_path: String,
+
     /// rg command to use. rg needs to be installed and in your PATH for cg to be able to find it.
     // trailing_var_arg tells clap to stop parsing and collecting
     // everything as if the user would have provided --
@@ -50,9 +54,7 @@ pub fn match_view(matched: &Match, idx: &usize, terminal_size: &usize) -> Option
                 let begin = String::from(&matched_text[cursor..submatch.start]).bright_green();
                 let submatch_str = format!(
                     "{}",
-                    matched_text[submatch.start..submatch.end]
-                        .yellow()
-                        .bold()
+                    matched_text[submatch.start..submatch.end].yellow().bold()
                 );
 
                 cursor = submatch.end;
@@ -60,7 +62,10 @@ pub fn match_view(matched: &Match, idx: &usize, terminal_size: &usize) -> Option
                 color_submatches = format!("{color_submatches}{begin}{submatch_str}");
             }
 
-            color_submatches = format!("{color_submatches}{}", &matched_text[cursor..].to_string().bright_green());
+            color_submatches = format!(
+                "{color_submatches}{}",
+                &matched_text[cursor..].to_string().bright_green()
+            );
 
             let result = color_submatches;
 
@@ -115,14 +120,48 @@ async fn main() -> ExitCode {
     let args = Args::parse();
     debug!("{:?}", args);
 
+    // Using `which` to check that the editor is in the path
+    let find = Command::new("which")
+        .arg(&args.rg_bin_path)
+        .output()
+        .await
+        .expect("failed to fin rg");
+
+    if find.status.code().unwrap() != 0 {
+        eprintln!(
+            "rg not found at path: {}, try to use install rg or `--rg-bin-path`",
+            args.rg_bin_path
+        );
+        return ExitCode::from(1);
+    }
+
+
+    let version = std::process::Command::new(&args.rg_bin_path)
+        .arg("--version")
+        .output()
+        .expect("could not run rg");
+
+    let re = Regex::new(r"ripgrep (\d+\.\d+.\d+)").unwrap();
+
+    let mut binding = version.stdout.lines();
+    let check_version = binding.next_line().await.unwrap().unwrap();
+    if !re.is_match(&check_version) {
+        eprintln!("Binary does not seem to be ripgrep: {check_version}");
+    }
+
+    debug!("{check_version:?}");
+    info!("rg version: {:?}", version);
+
     // The first argument is the command, and the rest are its arguments
-    let command = &args.rg[0];
-    let command_args = &args.rg[1..];
-
+    let command_args = &args.rg;
     // Log the command and its arguments
-    info!("Running command: {} {:?}", command, command_args.join(" "));
+    info!(
+        "Running command: {} {:?}",
+        args.rg_bin_path,
+        command_args.join(" ")
+    );
 
-    let mut cmd = Command::new(command)
+    let mut cmd = Command::new(args.rg_bin_path)
         .args(command_args)
         //TODO: Instead check if the flag is already present
         .arg("--json")
