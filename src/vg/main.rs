@@ -97,7 +97,8 @@ fn main() -> ExitCode {
         Ok(_) => {}
         Err(_) => {
             eprintln!(
-                "Could not find state files {}. Did you use vg without rg?", match_file
+                "Could not find state files {}. Did you use vg without rg?",
+                match_file
             );
             return ExitCode::from(1);
         }

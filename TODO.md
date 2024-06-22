@@ -10,6 +10,7 @@
 
 # CG
 - [x] Colored output
+- [ ] Tuncate huge match (should we show the matched part if not to huge ?)
 - [ ] Stdin version
 - [ ] Handle small terminal_size
 - [ ] Customize color

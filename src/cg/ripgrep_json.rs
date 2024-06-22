@@ -1,12 +1,12 @@
 use serde::{Deserialize, Serialize};
 use std::*;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Text {
     pub text: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct SubMatch {
     #[serde(rename = "match")]
     pub submatch: Text,
@@ -15,7 +15,7 @@ pub struct SubMatch {
 }
 
 //TODO: Missing fields
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Stats {
     pub matched_lines: u32,
     pub matches: u32,
@@ -23,7 +23,7 @@ pub struct Stats {
     pub searches_with_match: u32,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(rename_all = "snake_case")]
 #[serde(tag = "type", content = "data")]
 pub enum Match {

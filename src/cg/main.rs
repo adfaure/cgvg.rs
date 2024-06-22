@@ -1,12 +1,15 @@
-use clap::Parser;
-use colored::Colorize;
+use clap::{Parser, error::ErrorKind};
 use log::{debug, info};
 use regex::Regex;
 use rgvg::common::{expand_path, save_text, Index};
+use std::env;
 use std::process::ExitCode;
 use terminal_size::terminal_size;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
+
+mod views;
+use views::match_view_online;
 
 mod ripgrep_json;
 use ripgrep_json::Match;
@@ -14,97 +17,27 @@ use ripgrep_json::Match;
 mod print_terminal;
 use print_terminal::{number_of_digits, wrap_text};
 
+static DEFAULT_MATCH_FILE: &'static str = "~/.cgvg.match";
+static DEFAULT_RG: &'static str = "rg";
+
 /// rg find code using ripgrep
 #[derive(Parser, Debug)]
 #[command(version, about)]
 struct Args {
     /// Place match file of rgvg
-    #[arg(short, long, default_value = "~/.cgvg.match")]
+    #[arg(short, long, default_value = DEFAULT_MATCH_FILE)]
     match_file: String,
     /// Binary name of rg, or path
-    #[arg(short, long, default_value = "rg")]
+    #[arg(short, long, default_value = DEFAULT_RG)]
     rg_bin_path: String,
 
-    /// rg command to use. rg needs to be installed and in your PATH for cg to be able to find it.
+    /// Arguments for rg command. rg needs to be installed and in your PATH for cg to be able to find it.
+    ///
+    /// Example `cg find_text .` -> Look for find_text in the current directory
     // trailing_var_arg tells clap to stop parsing and collecting
     // everything as if the user would have provided --
     #[arg(trailing_var_arg = true, required = true)]
     rg: Vec<String>,
-}
-
-pub fn match_view(matched: &Match, idx: &usize, terminal_size: &usize) -> Option<String> {
-    let result = match matched {
-        Match::Begin { path } => Some((None, format!("{}", path.text.red()))),
-        Match::Match {
-            path: _,
-            lines,
-            line_number,
-            absolute_offset: _,
-            submatches,
-        } => {
-            let mut color_submatches = String::from("");
-            let mut cursor = 0;
-
-            let matched_text = String::from(lines.text.trim_end_matches('\n'));
-
-            for submatch in submatches.iter() {
-                let begin = String::from(&matched_text[cursor..submatch.start]).bright_green();
-                let submatch_str = format!(
-                    "{}",
-                    matched_text[submatch.start..submatch.end].yellow().bold()
-                );
-
-                cursor = submatch.end;
-
-                color_submatches = format!("{color_submatches}{begin}{submatch_str}");
-            }
-
-            color_submatches = format!(
-                "{color_submatches}{}",
-                &matched_text[cursor..].to_string().bright_green()
-            );
-
-            let result = color_submatches;
-
-            Some((Some(*line_number), result))
-        }
-        Match::End { path: _ } => Some((None, format!(""))),
-        _ => None,
-    };
-
-    match &result {
-        Some((Some(line_number), text)) => {
-            let mut result = "".to_string();
-
-            let line_number_len = number_of_digits(&(*line_number as usize));
-            let idx_len = number_of_digits(&idx);
-
-            let prefix = format!(
-                "{}    {}    ",
-                idx.to_string().cyan(),
-                line_number.to_string().magenta()
-            );
-            let prefix_size = line_number_len + idx_len + 8;
-
-            let padding = std::iter::repeat(" ")
-                .take(prefix_size - 1)
-                .collect::<String>();
-
-            let text_size = terminal_size - prefix_size;
-
-            for (line, s) in wrap_text(text, &text_size, &8).iter().enumerate() {
-                if line == 0 {
-                    result = format!("{prefix}{s}\n");
-                } else {
-                    result = format!("{result}{padding} {s}\n");
-                }
-            }
-
-            return Some(result);
-        }
-        Some((None, text)) => return Some(text.to_string()),
-        None => return None,
-    };
 }
 
 #[tokio::main]
@@ -114,7 +47,31 @@ async fn main() -> ExitCode {
     let size = terminal_size();
     let terminal_size = size.unwrap().0;
 
-    let args = Args::parse();
+    let args = match Args::try_parse() {
+        Ok(args) => args,
+        Err(err) => {
+            // If clap fails to parse the command line we passe everything to rg
+            match err.kind() {
+                // Display help is considered as an error.
+                ErrorKind::DisplayHelp => {
+                    println!("{}", err);
+                    return ExitCode::from(0);
+                },
+                _ => {
+                    let args: Vec<String> = env::args().skip(1).collect();
+                    info!("Fail to parse commandline, falling back to rg command.");
+                    info!("error: {err:?}");
+
+                    Args {
+                        match_file: DEFAULT_MATCH_FILE.to_string(),
+                        rg_bin_path: DEFAULT_RG.to_string(),
+                        rg: args.clone(),
+                    }
+                }
+            }
+        }
+    };
+
     debug!("{:?}", args);
 
     // Using `which` to check that the editor is in the path
@@ -175,17 +132,14 @@ async fn main() -> ExitCode {
     let mut file_and_line: Vec<Index> = vec![];
     debug!("terminal size= {:?}", terminal_size);
 
+    let mut matches = vec![];
+
     while let Some(line) = reader.next_line().await.expect("Failed to read line") {
         debug!("Received line: {}", line);
         debug!("{:?}", serde_json::from_str::<Match>(&line));
         let matched = serde_json::from_str::<Match>(&line).ok().unwrap();
 
-        match match_view(&matched, &idx, &(terminal_size.0 as usize)) {
-            Some(text) => {
-                println!("{text}")
-            }
-            None => {}
-        };
+        matches.push((matched.clone(), idx));
 
         match matched {
             Match::Match {
@@ -199,6 +153,15 @@ async fn main() -> ExitCode {
                 idx += 1;
             }
             _ => {}
+        };
+    }
+
+    for m in matches {
+        match match_view_online(&m.0, &m.1, &(terminal_size.0 as usize)) {
+            Some(text) => {
+                print!("{text}")
+            }
+            None => {}
         };
     }
 
