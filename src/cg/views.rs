@@ -1,37 +1,8 @@
 use colored::Colorize;
+use log::{debug};
 
 use crate::ripgrep_json::Match;
 use crate::{number_of_digits, wrap_text};
-
-/// Print a ripgrep match in the terminal, wrapping the matching text.
-/// This function can be used on each individual record from ripgrep,
-/// and can be called online. However, doing so may result in less satisfying
-/// printing, as we start printing before knowing the final size of the indices and line numbers.
-///
-/// `matched` A rust representation of RG json format. Can be either a match, a begin, a end, or a
-/// summary.
-///
-/// `idx` The idx to associate the match with (that will be used but the user to open this match).
-///
-/// `terminal_size` The current terminal width to determine the text size
-/// ```
-pub fn match_view_online(matched: &Match, idx: &usize, terminal_size: &usize) -> Option<String> {
-    let colored_match = color_match(matched);
-    let line_number = match matched {
-        Match::Match { line_number, .. } => Some(*line_number),
-        _ => None,
-    };
-
-    let result = (line_number, colored_match);
-
-    match &result {
-        (Some(line_number), Some(text)) => {
-            padding_and_wrap(&text, line_number, idx, terminal_size, None, None)
-        }
-        (None, Some(text)) => Some(text.to_string()),
-        _ => None,
-    }
-}
 
 pub fn padding_and_wrap(
     colored_text: &String,
@@ -40,9 +11,7 @@ pub fn padding_and_wrap(
     terminal_size: &usize,
     line_number_max_digits: Option<usize>,
     idx_max_digits: Option<usize>,
-) -> Option<String> {
-    let mut result = "".to_string();
-
+) -> Vec<String> {
     let line_number_len = number_of_digits(&(*line_number as usize));
     let idx_len = number_of_digits(&idx);
 
@@ -68,7 +37,11 @@ pub fn padding_and_wrap(
         }
     };
 
-    let prefix = format!("{}    {}    ", idx_str.cyan(), line_number_str.magenta());
+    let prefix = format!(
+        "{}    {}    ",
+        idx_str.cyan(),
+        line_number_str.bright_purple()
+    );
 
     let prefix_size =
         idx_max_digits.unwrap_or(idx_len) + line_number_max_digits.unwrap_or(line_number_len) + 8;
@@ -79,15 +52,19 @@ pub fn padding_and_wrap(
 
     let text_size = terminal_size - prefix_size;
 
-    for (line, s) in wrap_text(&colored_text, &text_size, &8).iter().enumerate() {
+    let mut result = vec![];
+    for (line, s) in wrap_text(&colored_text, &text_size, &8, true)
+        .iter()
+        .enumerate()
+    {
         if line == 0 {
-            result = format!("{prefix}{s}\n");
+            result.push(format!("{prefix}{s}"));
         } else {
-            result = format!("{result}{padding} {s}\n");
+            result.push(format!("{padding} {s}"));
         }
     }
 
-    return Some(result);
+    return result;
 }
 
 pub fn color_match(m: &Match) -> Option<String> {
@@ -105,12 +82,10 @@ pub fn color_match(m: &Match) -> Option<String> {
             let matched_text = String::from(lines.text.trim_end_matches('\n'));
 
             for submatch in submatches.iter() {
-                let begin = String::from(&matched_text[cursor..submatch.start]).bright_green();
+                let begin = String::from(&matched_text[cursor..submatch.start]);
                 let submatch_str = format!(
                     "{}",
-                    matched_text[submatch.start..submatch.end]
-                        .bright_yellow()
-                        .bold()
+                    matched_text[submatch.start..submatch.end].blue().bold()
                 );
 
                 cursor = submatch.end;
@@ -118,10 +93,7 @@ pub fn color_match(m: &Match) -> Option<String> {
                 color_submatches = format!("{color_submatches}{begin}{submatch_str}");
             }
 
-            color_submatches = format!(
-                "{color_submatches}{}",
-                &matched_text[cursor..].to_string().bright_green()
-            );
+            color_submatches = format!("{color_submatches}{}", &matched_text[cursor..].to_string());
 
             let result = color_submatches;
 
@@ -146,8 +118,9 @@ pub fn match_view(matched: &Vec<(Match, u32)>, terminal_size: &usize) {
             _ => {}
         };
     }
+    let mut i = matched.iter();
 
-    for m in matched.iter() {
+    while let Some(m) = i.next() {
         let (record, idx) = m;
         match &record {
             Match::Match { .. } => {
@@ -159,7 +132,7 @@ pub fn match_view(matched: &Vec<(Match, u32)>, terminal_size: &usize) {
 
                 let result = (line_number, colored_match);
 
-                let line_to_print = match &result {
+                let lines_to_print = match &result {
                     (Some(line_number), Some(text)) => padding_and_wrap(
                         &text,
                         line_number,
@@ -168,22 +141,19 @@ pub fn match_view(matched: &Vec<(Match, u32)>, terminal_size: &usize) {
                         Some(max_line as usize),
                         Some(max_idx as usize),
                     ),
-                    (None, Some(text)) => Some(text.to_string()),
-                    _ => None,
+                    _ => panic!(),
                 };
 
-                match line_to_print {
-                    Some(line) => {
-                            print!("{line}");
-                    }
-                    None => {}
-                };
+
+                for line in lines_to_print.iter() {
+                    println!("{line}");
+                }
             }
             Match::Begin { path } => {
-                print!("{}\n", path.text.red());
+                println!("{}", path.text.blue());
             }
             Match::End { .. } => {
-                print!("\n");
+                println!("");
             }
             _ => {}
         };

@@ -27,7 +27,12 @@ pub fn iter_colored(string: &str) -> impl Iterator<Item = String> + '_ {
     })
 }
 
-pub fn wrap_text<'a>(text: &'a str, max_length: &usize, tab_size: &usize) -> Vec<String> {
+pub fn wrap_text<'a>(
+    text: &'a str,
+    max_length: &usize,
+    tab_size: &usize,
+    fill_end: bool,
+) -> Vec<String> {
     let mut memory: Vec<String> = vec![];
 
     let wrapped = iter_colored(text)
@@ -78,6 +83,11 @@ pub fn wrap_text<'a>(text: &'a str, max_length: &usize, tab_size: &usize) -> Vec
             // harder to clean than to ignore, and I think ignoring wont change the style
             if len == 0 {
                 None
+            } else if fill_end && &len < max_length {
+                let padding = std::iter::repeat(" ")
+                    .take(max_length - len)
+                    .collect::<String>();
+                Some(format!("{line}{padding}"))
             } else {
                 Some(line)
             }
@@ -98,16 +108,16 @@ mod tests {
     fn test_wrap_text() {
         let tab_size = 8;
         // Simple cases
-        let res = wrap_text("1234567890abc", &5, &tab_size);
+        let res = wrap_text("1234567890abc", &5, &tab_size, false);
         assert_eq!(vec!["12345", "67890", "abc"], res);
 
-        let res = wrap_text("1234567890abc", &15, &tab_size);
+        let res = wrap_text("1234567890abc", &15, &tab_size, false);
         assert_eq!(vec!["1234567890abc"], res);
 
         // Got coloring
         let blue = format!("aaaaabbbbbzzzzz").blue().to_string();
 
-        let res = wrap_text(&blue, &5, &tab_size);
+        let res = wrap_text(&blue, &5, &tab_size, false);
         assert_eq!(
             vec![
                 "\u{1b}[34maaaaa\u{1b}[0m",
@@ -123,7 +133,7 @@ mod tests {
             .underline()
             .to_string();
 
-        let res = wrap_text(&blue_bold_underline, &5, &tab_size);
+        let res = wrap_text(&blue_bold_underline, &5, &tab_size, false);
 
         assert_eq!(
             vec![
@@ -140,7 +150,7 @@ mod tests {
 
         let blue_bold_underline = format!("{begin}{middle}{end}").underline().to_string();
 
-        let res = wrap_text(&blue_bold_underline, &5, &tab_size);
+        let res = wrap_text(&blue_bold_underline, &5, &tab_size, false);
         assert_eq!(
             vec![
                 "\u{1b}[4m\u{1b}[34maaaaa\u{1b}[0m",
@@ -150,7 +160,7 @@ mod tests {
             res
         );
 
-        let res = wrap_text(&"\taaaaaaaabbbbbbbb".to_string(), &8, &tab_size);
+        let res = wrap_text(&"\taaaaaaaabbbbbbbb".to_string(), &8, &tab_size, false);
 
         println!("{res:?}");
 
