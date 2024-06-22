@@ -3,18 +3,18 @@
 - [x] Configurable index path
 - [ ] write documentation and man
 - [ ] Write tests
-- [ ] configuration file
+- [ ] configuration file ?
 - [x] Cli ?
 - [x] Packaging
 - [ ] Find a name
 
 # CG
 - [x] Colored output
-- [ ] Tuncate huge match (should we show the matched part if not to huge ?)
+- [x] Tuncate huge match (should we show the matched part if not to huge ?)
 - [ ] Stdin version
 - [ ] Handle small terminal_size
 - [ ] Customize color
-- [ ] Add different "view"
+- [x] Add different "view"
     - One view like cg (culumns), but we might need to wait for all results
 - [ ] Find the list of RG usage that we are not suporting
     - Looks like the option `--json` overrides some behaviors
