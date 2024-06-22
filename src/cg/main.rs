@@ -1,5 +1,5 @@
 use clap::{error::ErrorKind, Parser};
-use log::{debug, info};
+use log::{debug, info, warn};
 use regex::Regex;
 use rgvg::common::{expand_path, save_text, Index};
 use std::env;
@@ -137,7 +137,15 @@ async fn main() -> ExitCode {
     while let Some(line) = reader.next_line().await.expect("Failed to read line") {
         debug!("Received line: {}", line);
         debug!("{:?}", serde_json::from_str::<Match>(&line));
-        let matched = serde_json::from_str::<Match>(&line).ok().unwrap();
+
+        let matched = match serde_json::from_str::<Match>(&line) {
+            Ok(parsed) => parsed,
+            Err(e) => {
+                warn!("TODO: {e:?}");
+                eprintln!("Received record from rg with unsopported format: {}", line);
+                return ExitCode::from(1);
+            }
+        };
 
         matches.push((matched.clone(), idx));
 
@@ -156,7 +164,7 @@ async fn main() -> ExitCode {
         };
     }
 
-    match_view(&matches, &(terminal_size.0 as usize));
+    match_view(&matches, &(terminal_size.0 as usize), Some(&500));
 
     // Ensure the command completes
     let status = cmd.wait().await.expect("");

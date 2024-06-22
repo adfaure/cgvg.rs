@@ -1,5 +1,4 @@
 use colored::Colorize;
-use log::{debug};
 
 use crate::ripgrep_json::Match;
 use crate::{number_of_digits, wrap_text};
@@ -107,7 +106,11 @@ pub fn color_match(m: &Match) -> Option<String> {
     result
 }
 
-pub fn match_view(matched: &Vec<(Match, u32)>, terminal_size: &usize) {
+pub fn match_view(
+    matched: &Vec<(Match, u32)>,
+    terminal_size: &usize,
+    max_text_size: Option<&usize>,
+) {
     let (mut max_idx, mut max_line) = (0, 0);
     for (m, idx) in matched.iter() {
         match m {
@@ -123,8 +126,21 @@ pub fn match_view(matched: &Vec<(Match, u32)>, terminal_size: &usize) {
     while let Some(m) = i.next() {
         let (record, idx) = m;
         match &record {
-            Match::Match { .. } => {
-                let colored_match = color_match(&record);
+            Match::Match { lines, .. } => {
+                let colored_match = if max_text_size.is_some_and(|max| lines.text.len() > *max) {
+                    Some(
+                        format!(
+                            "text truncated size({})>{}",
+                            lines.text.len(),
+                            max_text_size.unwrap()
+                        )
+                        .red()
+                        .to_string(),
+                    )
+                } else {
+                    color_match(&record)
+                };
+
                 let line_number = match record {
                     Match::Match { line_number, .. } => Some(line_number),
                     _ => None,
@@ -143,7 +159,6 @@ pub fn match_view(matched: &Vec<(Match, u32)>, terminal_size: &usize) {
                     ),
                     _ => panic!(),
                 };
-
 
                 for line in lines_to_print.iter() {
                     println!("{line}");
