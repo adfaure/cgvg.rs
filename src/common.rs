@@ -1,22 +1,71 @@
 use bincode;
-use itertools::*;
 use log::debug;
 use memmap2::Mmap;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
+use std::io::{BufRead, BufReader};
 use std::process::Command;
 use std::*;
 
 pub type Index = (String, u32);
 pub type IndexOffset = usize;
 
-
 #[derive(Debug)]
 pub enum CgVgError {
-    LoadIndexOob(u32, u32)
+    LoadIndexOob(u32, u32),
+    LoadIndexFormat,
 }
 
-pub fn load<'a>(idx: u32, file_path: &'a str, index_path: &'a str) -> Result<Index, CgVgError> {
+pub fn save_text<'a>(tuples: Vec<Index>, file_path: &'a str) {
+    let mut file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(file_path)
+        .expect(&format!("cannot open file {}", &file_path));
+
+    // Write the actual data
+    for data in tuples.iter() {
+        file.write_all(&format!("{} {}\n", data.1, data.0).as_bytes())
+            .expect("Cannot write data");
+    }
+
+    file.sync_all().expect("cannot sync");
+}
+
+pub fn load_text<'a>(idx: u32, file_path: &'a str) -> Result<Index, CgVgError> {
+    let lines: Vec<_> = BufReader::new(File::open(file_path).expect("Cannot open file"))
+        .lines()
+        .filter_map(|line| line.ok())
+        // How to find the number of lines without this collect ?
+        .collect();
+
+    match lines
+        .iter()
+        .map(|line| line.to_string())
+        .skip((idx) as usize)
+        .next()
+    {
+        Some(line) => {
+            let (idx_str, path) = line.split_once(' ').unwrap();
+            let idx = match idx_str.parse::<u32>() {
+                Ok(idx) => idx,
+                Err(_) => return Err(CgVgError::LoadIndexFormat),
+            };
+
+            return Ok((path.to_string(), idx));
+        }
+        None => {
+            return Err(CgVgError::LoadIndexOob(idx, lines.len() as u32));
+        }
+    }
+}
+
+pub fn load_binary<'a>(
+    idx: u32,
+    file_path: &'a str,
+    index_path: &'a str,
+) -> Result<Index, CgVgError> {
     // Open the binary file
     let index_file = File::open(index_path).expect("cannot open file");
     let reader = std::io::BufReader::new(index_file);
@@ -49,7 +98,7 @@ pub fn load<'a>(idx: u32, file_path: &'a str, index_path: &'a str) -> Result<Ind
 }
 
 // First function that saves the entire Vec
-pub fn save<'a>(tuples: Vec<Index>, file_path: &'a str, index_path: &'a str) {
+pub fn save_binary<'a>(tuples: Vec<Index>, file_path: &'a str, index_path: &'a str) {
     // Serialize tuples to a binary format
     let serialized_data: Vec<Vec<u8>> = tuples
         .iter()
@@ -99,21 +148,20 @@ pub fn save<'a>(tuples: Vec<Index>, file_path: &'a str, index_path: &'a str) {
     file.sync_all().expect("cannot sync");
 }
 
-/// Very adhoc function since I need to expand two paths
-pub fn expand_paths<'a>(path1: &'a str, path2: &'a str) -> Result<(String, String), String> {
+pub fn expand_path<'a>(path: &'a str) -> Result<String, String> {
     // Yuck using sh to expand the path to handle path constructed with ~ or variabale ($HOME)
     // We might consider one of these options: https://blog.liw.fi/posts/2021/10/12/tilde-expansion-crates/ (a bit outdated though)
     let expand_tild = Command::new("sh")
         .arg("-c")
-        .arg(format!("echo {} {}", path1, path2))
+        .arg(format!("echo {}", path))
         .output();
 
-    let (p1, p2) = String::from_utf8(expand_tild.expect("Command failed to run").stdout)
+    let p = String::from_utf8(expand_tild.expect("Command failed to run").stdout)
         .unwrap()
         .split_whitespace()
         .map(|s| String::from(s))
-        .collect_tuple()
+        .next()
         .unwrap();
 
-    Ok((p1, p2))
+    Ok(p)
 }

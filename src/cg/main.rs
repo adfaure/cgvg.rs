@@ -2,7 +2,7 @@ use clap::Parser;
 use colored::Colorize;
 use log::{debug, info};
 use regex::Regex;
-use rgvg::common::{expand_paths, save, Index};
+use rgvg::common::{expand_path, save_text, Index};
 use std::process::ExitCode;
 use terminal_size::terminal_size;
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -18,9 +18,6 @@ use print_terminal::{number_of_digits, wrap_text};
 #[derive(Parser, Debug)]
 #[command(version, about)]
 struct Args {
-    /// path to index state file of rgvg
-    #[arg(short, long, default_value = "~/.cgvg.idx")]
-    index_file: String,
     /// Place match file of rgvg
     #[arg(short, long, default_value = "~/.cgvg.match")]
     match_file: String,
@@ -135,7 +132,6 @@ async fn main() -> ExitCode {
         return ExitCode::from(1);
     }
 
-
     let version = std::process::Command::new(&args.rg_bin_path)
         .arg("--version")
         .output()
@@ -210,8 +206,8 @@ async fn main() -> ExitCode {
     let status = cmd.wait().await.expect("");
     debug!("Command finished with status: {}", status);
 
-    let (index_file, match_file) = expand_paths(&args.index_file, &args.match_file).unwrap();
-    save(file_and_line, &match_file, &index_file);
+    let match_file = expand_path(&args.match_file).unwrap();
+    save_text(file_and_line, &match_file);
 
     return ExitCode::from(0);
 }

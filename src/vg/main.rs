@@ -1,6 +1,6 @@
 use clap::Parser;
 use log::debug;
-use rgvg::common::{expand_paths, load, CgVgError};
+use rgvg::common::{expand_path, load_text, CgVgError};
 use std::env;
 use std::fs;
 use std::process::{Command, ExitCode};
@@ -91,14 +91,13 @@ fn main() -> ExitCode {
         },
     };
 
-    let (match_file, index_file) = expand_paths(&args.match_file, &args.index_file).unwrap();
+    let match_file = expand_path(&args.match_file).unwrap();
 
-    match (fs::metadata(&match_file), fs::metadata(&index_file)) {
-        (Ok(_), Ok(_)) => {}
-        (Err(_), _) | (_, Err(_)) => {
+    match fs::metadata(&match_file) {
+        Ok(_) => {}
+        Err(_) => {
             eprintln!(
-                "Could not find state files {} or {}. Did you use vg without rg?",
-                index_file, match_file
+                "Could not find state files {}. Did you use vg without rg?", match_file
             );
             return ExitCode::from(1);
         }
@@ -106,10 +105,17 @@ fn main() -> ExitCode {
 
     let selected = args.seletion;
 
-    let result = match load(selected, &match_file, &index_file) {
+    let result = match load_text(selected, &match_file) {
         Ok(index) => index,
         Err(CgVgError::LoadIndexOob(idx, len)) => {
-            eprintln!("Provided Index ({}) greater that number of possibilities ({}).", idx, len);
+            eprintln!(
+                "Provided Index ({}) greater that number of possibilities ({}).",
+                idx, len
+            );
+            return ExitCode::from(1);
+        }
+        Err(CgVgError::LoadIndexFormat) => {
+            eprintln!("Could not load select index. It might be a formating issue.",);
             return ExitCode::from(1);
         }
     };
