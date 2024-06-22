@@ -10,7 +10,13 @@ use std::*;
 pub type Index = (String, u32);
 pub type IndexOffset = usize;
 
-pub fn load<'a>(idx: u32, file_path: &'a str, index_path: &'a str) -> Result<Index, ()> {
+
+#[derive(Debug)]
+pub enum CgVgError {
+    LoadIndexOob(u32, u32)
+}
+
+pub fn load<'a>(idx: u32, file_path: &'a str, index_path: &'a str) -> Result<Index, CgVgError> {
     // Open the binary file
     let index_file = File::open(index_path).expect("cannot open file");
     let reader = std::io::BufReader::new(index_file);
@@ -18,13 +24,16 @@ pub fn load<'a>(idx: u32, file_path: &'a str, index_path: &'a str) -> Result<Ind
     // Deserialize the array of u16 from the file
     let indexes: Vec<IndexOffset> = bincode::deserialize_from(reader).expect("error");
 
-    assert!(idx as usize <= indexes.len());
+    if idx as usize >= indexes.len() {
+        return Err(CgVgError::LoadIndexOob(idx, indexes.len() as u32));
+    }
 
     let start = if idx == 0 {
         0
     } else {
         indexes[idx as usize - 1]
     } as usize;
+
     let end = indexes[idx as usize] as usize;
 
     // Memory-map the file

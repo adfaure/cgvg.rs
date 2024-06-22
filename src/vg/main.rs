@@ -1,6 +1,6 @@
 use clap::Parser;
 use log::debug;
-use rgvg::common::{expand_paths, load};
+use rgvg::common::{expand_paths, load, CgVgError};
 use std::env;
 use std::fs;
 use std::process::{Command, ExitCode};
@@ -106,7 +106,13 @@ fn main() -> ExitCode {
 
     let selected = args.seletion;
 
-    let result = load(selected, &match_file, &index_file).unwrap();
+    let result = match load(selected, &match_file, &index_file) {
+        Ok(index) => index,
+        Err(CgVgError::LoadIndexOob(idx, len)) => {
+            eprintln!("Provided Index ({}) greater that number of possibilities ({}).", idx, len);
+            return ExitCode::from(1);
+        }
+    };
 
     // Replacing the placeholders
     let mut command_args: String = open_format.replace("{LINE}", &result.1.to_string());
