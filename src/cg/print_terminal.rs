@@ -31,6 +31,21 @@ pub fn iter_colored(string: &str) -> impl Iterator<Item = String> + '_ {
     })
 }
 
+pub fn pad_number(number: u32, max_size: u32) -> String {
+    let nb_digits = number_of_digits(&number);
+    assert!(nb_digits <= max_size, "pad_number wrong arguments number of digits of {number} > {max_size}");
+
+    if nb_digits < max_size {
+        let diff = max_size - nb_digits;
+        let padding = std::iter::repeat(" ")
+            .take(diff as usize)
+            .collect::<String>();
+        format!("{}{}", number, padding)
+    } else {
+        format!("{}", number)
+    }
+}
+
 pub fn wrap_text<'a>(
     text: &'a str,
     max_length: &u32,
@@ -198,4 +213,15 @@ mod tests {
         let cinquante = 100_u32;
         assert_eq!(3, number_of_digits(&cinquante));
     }
+
+    #[test]
+    #[should_panic(expected = "pad_number wrong arguments number of digits of 100 > 0")]
+    fn test_pad_number_assert() {
+        assert_eq!("100  ", pad_number(100, 5));
+        assert_eq!("100", pad_number(100, 3));
+
+        // Last one should assert
+        assert_eq!("100  ", pad_number(100, 0));
+    }
+
 }

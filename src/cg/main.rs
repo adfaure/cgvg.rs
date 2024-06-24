@@ -15,7 +15,7 @@ mod ripgrep_json;
 use ripgrep_json::Match;
 
 mod print_terminal;
-use print_terminal::{number_of_digits, wrap_text};
+use print_terminal::{number_of_digits, wrap_text, pad_number};
 
 static DEFAULT_MATCH_FILE: &'static str = "~/.cgvg.match";
 static DEFAULT_RG: &'static str = "rg";

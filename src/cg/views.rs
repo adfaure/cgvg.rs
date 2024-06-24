@@ -1,20 +1,8 @@
 use colored::Colorize;
 
 use crate::ripgrep_json::Match;
-use crate::{number_of_digits, wrap_text};
+use crate::{number_of_digits, wrap_text, pad_number};
 
-pub fn pad_number(number: u32, max_size: u32) -> String {
-    let nb_digits = number_of_digits(&number);
-    if nb_digits < max_size {
-        let diff = max_size - nb_digits;
-        let padding = std::iter::repeat(" ")
-            .take(diff as usize)
-            .collect::<String>();
-        format!("{}{}", number, padding)
-    } else {
-        format!("{}", number)
-    }
-}
 
 pub fn padding_and_wrap(
     colored_text: &String,
