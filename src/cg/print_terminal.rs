@@ -2,11 +2,16 @@ use itertools::FoldWhile::{Continue, Done};
 use itertools::Itertools;
 use std::iter;
 
-pub fn number_of_digits(number: &usize) -> usize {
-    if *number == 0 {
-        1
+
+pub fn number_of_digits<T>(number: &T) -> u32
+where
+    T: Into<u64> + Copy,
+{
+    let num = (*number).into();
+    if num == 0_32 {
+        1_32
     } else {
-        (*number as f32).log(10f32).floor() as usize + 1
+        (num as f64).log10().floor() as u32 + 1
     }
 }
 
@@ -29,8 +34,8 @@ pub fn iter_colored(string: &str) -> impl Iterator<Item = String> + '_ {
 
 pub fn wrap_text<'a>(
     text: &'a str,
-    max_length: &usize,
-    tab_size: &usize,
+    max_length: &u32,
+    tab_size: &u32,
     fill_end: bool,
 ) -> Vec<String> {
     let mut memory: Vec<String> = vec![];
@@ -38,7 +43,7 @@ pub fn wrap_text<'a>(
     let wrapped = iter_colored(text)
         .map(|c| {
             if c == "\t" {
-                return iter::repeat(" ".to_string()).take(*tab_size);
+                return iter::repeat(" ".to_string()).take(*tab_size as usize);
             } else {
                 return iter::repeat(c).take(1);
             }
@@ -85,7 +90,7 @@ pub fn wrap_text<'a>(
                 None
             } else if fill_end && &len < max_length {
                 let padding = std::iter::repeat(" ")
-                    .take(max_length - len)
+                    .take((max_length - len) as usize)
                     .collect::<String>();
                 Some(format!("{line}{padding}"))
             } else {
@@ -182,16 +187,16 @@ mod tests {
 
     #[test]
     fn test_number_of_digits() {
-        let zero = 0;
+        let zero = 0_u32;
         assert_eq!(1, number_of_digits(&zero));
 
-        let cinq = 5;
+        let cinq = 5_u32;
         assert_eq!(1, number_of_digits(&cinq));
 
-        let dix = 11;
+        let dix = 11_u32;
         assert_eq!(2, number_of_digits(&dix));
 
-        let cinquante = 100;
+        let cinquante = 100_u32;
         assert_eq!(3, number_of_digits(&cinquante));
     }
 }

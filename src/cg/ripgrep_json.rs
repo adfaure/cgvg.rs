@@ -10,8 +10,8 @@ pub struct Text {
 pub struct SubMatch {
     #[serde(rename = "match")]
     pub submatch: Text,
-    pub start: usize,
-    pub end: usize,
+    pub start: u32,
+    pub end: u32,
 }
 
 //TODO: Missing fields

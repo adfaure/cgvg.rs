@@ -6,18 +6,18 @@ use crate::{number_of_digits, wrap_text};
 pub fn padding_and_wrap(
     colored_text: &String,
     line_number: &u32,
-    idx: &usize,
-    terminal_size: &usize,
-    line_number_max_digits: Option<usize>,
-    idx_max_digits: Option<usize>,
+    idx: &u32,
+    terminal_size: &u32,
+    line_number_max_digits: Option<u32>,
+    idx_max_digits: Option<u32>,
 ) -> Vec<String> {
-    let line_number_len = number_of_digits(&(*line_number as usize));
-    let idx_len = number_of_digits(&idx);
+    let line_number_len = number_of_digits(line_number);
+    let idx_len = number_of_digits(idx);
 
     let line_number_str = match line_number_max_digits {
         Some(max) if max > line_number_len => {
             let diff = max - line_number_len;
-            let padding = std::iter::repeat(" ").take(diff).collect::<String>();
+            let padding = std::iter::repeat(" ").take(diff as usize).collect::<String>();
             format!("{}{}", line_number, padding)
         }
         _ => {
@@ -28,7 +28,7 @@ pub fn padding_and_wrap(
     let idx_str = match idx_max_digits {
         Some(max) if max > idx_len => {
             let diff = max - idx_len;
-            let padding = std::iter::repeat(" ").take(diff).collect::<String>();
+            let padding = std::iter::repeat(" ").take(diff as usize).collect::<String>();
             format!("{}{}", idx, padding)
         }
         _ => {
@@ -46,7 +46,7 @@ pub fn padding_and_wrap(
         idx_max_digits.unwrap_or(idx_len) + line_number_max_digits.unwrap_or(line_number_len) + 8;
 
     let padding = std::iter::repeat(" ")
-        .take(prefix_size - 1)
+        .take((prefix_size - 1) as usize)
         .collect::<String>();
 
     let text_size = terminal_size - prefix_size;
@@ -81,10 +81,10 @@ pub fn color_match(m: &Match) -> Option<String> {
             let matched_text = String::from(lines.text.trim_end_matches('\n'));
 
             for submatch in submatches.iter() {
-                let begin = String::from(&matched_text[cursor..submatch.start]);
+                let begin = String::from(&matched_text[(cursor as usize)..(submatch.start as usize)]);
                 let submatch_str = format!(
                     "{}",
-                    matched_text[submatch.start..submatch.end].blue().bold()
+                    matched_text[(submatch.start as usize)..(submatch.end as usize)].blue().bold()
                 );
 
                 cursor = submatch.end;
@@ -92,7 +92,7 @@ pub fn color_match(m: &Match) -> Option<String> {
                 color_submatches = format!("{color_submatches}{begin}{submatch_str}");
             }
 
-            color_submatches = format!("{color_submatches}{}", &matched_text[cursor..].to_string());
+            color_submatches = format!("{color_submatches}{}", &matched_text[(cursor as usize)..].to_string());
 
             let result = color_submatches;
 
@@ -108,15 +108,15 @@ pub fn color_match(m: &Match) -> Option<String> {
 
 pub fn match_view(
     matched: &Vec<(Match, u32)>,
-    terminal_size: &usize,
-    max_text_size: Option<&usize>,
+    terminal_size: &u32,
+    max_text_size: Option<&u32>,
 ) {
     let (mut max_idx, mut max_line) = (0, 0);
     for (m, idx) in matched.iter() {
         match m {
             Match::Match { line_number, .. } => {
-                max_idx = std::cmp::max(max_idx, number_of_digits(&(*idx as usize)));
-                max_line = std::cmp::max(max_line, number_of_digits(&(*line_number as usize)));
+                max_idx = std::cmp::max(max_idx, number_of_digits(idx));
+                max_line = std::cmp::max(max_line, number_of_digits(line_number));
             }
             _ => {}
         };
@@ -127,7 +127,7 @@ pub fn match_view(
         let (record, idx) = m;
         match &record {
             Match::Match { lines, .. } => {
-                let colored_match = if max_text_size.is_some_and(|max| lines.text.len() > *max) {
+                let colored_match = if max_text_size.is_some_and(|max| lines.text.len() > *max as usize) {
                     Some(
                         format!(
                             "text truncated size({})>{}",
@@ -152,10 +152,10 @@ pub fn match_view(
                     (Some(line_number), Some(text)) => padding_and_wrap(
                         &text,
                         line_number,
-                        &(*idx as usize),
+                        idx,
                         terminal_size,
-                        Some(max_line as usize),
-                        Some(max_idx as usize),
+                        Some(max_line),
+                        Some(max_idx),
                     ),
                     _ => panic!(),
                 };
@@ -165,7 +165,7 @@ pub fn match_view(
                 }
             }
             Match::Begin { path } => {
-                println!("{}", path.text.blue());
+                println!("{}", path.text.red());
             }
             Match::End { .. } => {
                 println!("");

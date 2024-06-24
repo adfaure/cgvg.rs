@@ -164,7 +164,7 @@ async fn main() -> ExitCode {
         };
     }
 
-    match_view(&matches, &(terminal_size.0 as usize), Some(&500));
+    match_view(&matches, &(terminal_size.0 as u32), Some(&500));
 
     // Ensure the command completes
     let status = cmd.wait().await.expect("");
