@@ -2,7 +2,6 @@ use itertools::FoldWhile::{Continue, Done};
 use itertools::Itertools;
 use std::iter;
 
-
 pub fn number_of_digits<T>(number: &T) -> u32
 where
     T: Into<u64> + Copy,
