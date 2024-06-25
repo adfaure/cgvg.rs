@@ -7,8 +7,8 @@ where
     T: Into<u64> + Copy,
 {
     let num = (*number).into();
-    if num == 0_32 {
-        1_32
+    if num == 0 as u64 {
+        1 as u32
     } else {
         (num as f64).log10().floor() as u32 + 1
     }
@@ -33,7 +33,7 @@ pub fn iter_colored(string: &str) -> impl Iterator<Item = String> + '_ {
 
 pub fn pad_number(number: u32, max_size: u32) -> String {
     let nb_digits = number_of_digits(&number);
-    assert!(nb_digits <= max_size, "pad_number wrong arguments number of digits of {number} > {max_size}");
+    assert!(nb_digits <= max_size, "pad_number wrong arguments number of digits of {nb_digits} > {max_size}");
 
     if nb_digits < max_size {
         let diff = max_size - nb_digits;
