@@ -47,50 +47,38 @@ pub fn padding_and_wrap(
     return result;
 }
 
-pub fn color_match(m: &Match) -> Option<String> {
-    let result = match m {
-        Match::Match {
-            path: _,
-            lines,
-            line_number: _,
-            absolute_offset: _,
-            submatches,
-        } => {
-            let mut color_submatches = String::from("");
-            let mut cursor = 0;
 
-            let matched_text = String::from(lines.text.trim_end_matches('\n'));
+pub fn color_match(text: &String, submatches: &Vec<(u32, u32)>) -> Option<String> {
+// pub fn color_match(m: &Match) -> Option<String> {
+    let mut color_submatches = String::from("");
+    let mut cursor = 0;
 
-            for submatch in submatches.iter() {
-                let begin =
-                    String::from(&matched_text[(cursor as usize)..(submatch.start as usize)]);
-                let submatch_str = format!(
-                    "{}",
-                    matched_text[(submatch.start as usize)..(submatch.end as usize)]
-                        .blue()
-                        .bold()
-                );
+    // FIXME: Don't trim here
+    let matched_text = String::from(text.trim_end_matches('\n'));
 
-                cursor = submatch.end;
+    for (start, end) in submatches.iter() {
+        let begin =
+            String::from(&matched_text[(cursor as usize)..(*start as usize)]);
+        let submatch_str = format!(
+            "{}",
+            matched_text[(*start as usize)..(*end as usize)]
+                .blue()
+                .bold()
+        );
 
-                color_submatches = format!("{color_submatches}{begin}{submatch_str}");
-            }
+        cursor = *end;
 
-            color_submatches = format!(
-                "{color_submatches}{}",
-                &matched_text[(cursor as usize)..].to_string()
-            );
+        color_submatches = format!("{color_submatches}{begin}{submatch_str}");
+    }
 
-            let result = color_submatches;
+    color_submatches = format!(
+        "{color_submatches}{}",
+        &matched_text[(cursor as usize)..].to_string()
+    );
 
-            Some(result)
-        }
-        _ => {
-            panic!("")
-        }
-    };
+    let result = color_submatches;
 
-    result
+    Some(result)
 }
 
 pub fn match_view(matched: &Vec<(Match, u32)>, terminal_size: &u32, max_text_size: Option<&u32>) {
@@ -109,7 +97,7 @@ pub fn match_view(matched: &Vec<(Match, u32)>, terminal_size: &u32, max_text_siz
     while let Some(m) = i.next() {
         let (record, idx) = m;
         match &record {
-            Match::Match { lines, .. } => {
+            Match::Match { lines, submatches, ..} => {
                 let colored_match =
                     if max_text_size.is_some_and(|max| lines.text.len() > *max as usize) {
                         Some(
@@ -122,7 +110,7 @@ pub fn match_view(matched: &Vec<(Match, u32)>, terminal_size: &u32, max_text_siz
                             .to_string(),
                         )
                     } else {
-                        color_match(&record)
+                        color_match(&lines.text, &submatches.iter().map(|s| (s.start, s.end)).collect())
                     };
 
                 let line_number = match record {
