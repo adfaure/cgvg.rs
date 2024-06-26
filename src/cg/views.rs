@@ -1,8 +1,7 @@
 use colored::Colorize;
 
 use crate::ripgrep_json::Match;
-use crate::{number_of_digits, wrap_text, pad_number};
-
+use crate::{number_of_digits, pad_number, wrap_text};
 
 pub fn padding_and_wrap(
     colored_text: &String,
@@ -47,9 +46,7 @@ pub fn padding_and_wrap(
     return result;
 }
 
-
-pub fn color_match(text: &String, submatches: &Vec<(u32, u32)>) -> Option<String> {
-// pub fn color_match(m: &Match) -> Option<String> {
+pub fn color_submatch(text: &String, submatches: &Vec<(u32, u32)>) -> Option<String> {
     let mut color_submatches = String::from("");
     let mut cursor = 0;
 
@@ -57,8 +54,12 @@ pub fn color_match(text: &String, submatches: &Vec<(u32, u32)>) -> Option<String
     let matched_text = String::from(text.trim_end_matches('\n'));
 
     for (start, end) in submatches.iter() {
-        let begin =
-            String::from(&matched_text[(cursor as usize)..(*start as usize)]);
+        assert!(
+            (*end as usize) <= matched_text.len(),
+            "Cannot color submatches, text is shorter than submatches {end} {}", matched_text.len()
+        );
+
+        let begin = String::from(&matched_text[(cursor as usize)..(*start as usize)]);
         let submatch_str = format!(
             "{}",
             matched_text[(*start as usize)..(*end as usize)]
@@ -97,7 +98,9 @@ pub fn match_view(matched: &Vec<(Match, u32)>, terminal_size: &u32, max_text_siz
     while let Some(m) = i.next() {
         let (record, idx) = m;
         match &record {
-            Match::Match { lines, submatches, ..} => {
+            Match::Match {
+                lines, submatches, ..
+            } => {
                 let colored_match =
                     if max_text_size.is_some_and(|max| lines.text.len() > *max as usize) {
                         Some(
@@ -110,7 +113,10 @@ pub fn match_view(matched: &Vec<(Match, u32)>, terminal_size: &u32, max_text_siz
                             .to_string(),
                         )
                     } else {
-                        color_match(&lines.text, &submatches.iter().map(|s| (s.start, s.end)).collect())
+                        color_submatch(
+                            &lines.text,
+                            &submatches.iter().map(|s| (s.start, s.end)).collect(),
+                        )
                     };
 
                 let line_number = match record {
@@ -144,5 +150,43 @@ pub fn match_view(matched: &Vec<(Match, u32)>, terminal_size: &u32, max_text_siz
             }
             _ => {}
         };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    // Note this useful idiom: importing names from outer (for mod tests) scope.
+    use super::*;
+    use std::panic;
+
+    #[test]
+    fn test_color_submatch() {
+        let text = "aaaaabbbbbcccccdddddeeeee".to_string();
+        let submatches = vec![(0, 15)];
+        let colored = color_submatch(&text, &submatches);
+        println!("{colored:?}");
+        assert_eq!(colored.is_some(), true);
+        assert_eq!("\u{1b}[1;34maaaaabbbbbccccc\u{1b}[0mdddddeeeee", colored.unwrap());
+
+        let submatches = vec![(0, 5)];
+        let colored = color_submatch(&text, &submatches);
+        assert_eq!(colored.is_some(), true);
+        assert_eq!("\u{1b}[1;34maaaaa\u{1b}[0mbbbbbcccccdddddeeeee", colored.unwrap());
+
+        let submatches = vec![(10, 25)];
+        let colored = color_submatch(&text, &submatches);
+        assert_eq!(colored.is_some(), true);
+        assert_eq!("aaaaabbbbb\u{1b}[1;34mcccccdddddeeeee\u{1b}[0m", colored.unwrap());
+
+        let submatches = vec![(0, 24)];
+        let colored = color_submatch(&text, &submatches);
+        assert_eq!(colored.is_some(), true);
+        assert_eq!("\u{1b}[1;34maaaaabbbbbcccccdddddeeee\u{1b}[0me", colored.unwrap());
+
+        let submatches = vec![(0, 26)];
+        let result = panic::catch_unwind(|| {
+            color_submatch(&text, &submatches);
+        });
+        assert_eq!(true, result.is_err());
     }
 }
