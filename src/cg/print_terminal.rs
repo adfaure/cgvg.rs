@@ -2,6 +2,7 @@ use itertools::FoldWhile::{Continue, Done};
 use itertools::Itertools;
 use std::iter;
 
+/// Find the number of digits of a number.
 pub fn number_of_digits<T>(number: &T) -> u32
 where
     T: Into<u64> + Copy,
@@ -14,6 +15,7 @@ where
     }
 }
 
+/// Iter over a colored string (it reads the `\u{1b}` codes).
 pub fn iter_colored(string: &str) -> impl Iterator<Item = String> + '_ {
     string.chars().batching(|it| {
         match it.next() {
@@ -31,6 +33,9 @@ pub fn iter_colored(string: &str) -> impl Iterator<Item = String> + '_ {
     })
 }
 
+/// Pad a number with white spaces (if needed) to be printed with the `max_size` len.
+///
+/// panics if the number of digits of `number` is greater than `max_size`.
 pub fn pad_number(number: u32, max_size: u32) -> String {
     let nb_digits = number_of_digits(&number);
     assert!(
@@ -49,15 +54,20 @@ pub fn pad_number(number: u32, max_size: u32) -> String {
     }
 }
 
+/// Wrap text with support for colored string.
+///
+/// - replace tabs with a number of whitespace to ensure that the printed line stays in the
+/// delimited space.
+/// - if `fill_end` is true, then empty spaces are added at the end of each wrapped line.
 pub fn wrap_text<'a>(
     text: &'a str,
-    max_length: &u32,
-    tab_size: &u32,
+    max_length: &'a u32,
+    tab_size: &'a u32,
     fill_end: bool,
-) -> Vec<String> {
+) -> impl Iterator<Item = String> + 'a {
     let mut memory: Vec<String> = vec![];
 
-    let wrapped = iter_colored(text)
+    iter_colored(text)
         .map(|c| {
             if c == "\t" {
                 return iter::repeat(" ".to_string()).take(*tab_size as usize);
@@ -66,7 +76,7 @@ pub fn wrap_text<'a>(
             }
         })
         .flatten()
-        .batching(|it| {
+        .batching(move |it| {
             let (len, temp) = it
                 .fold_while((0, memory.clone()), |(length, mut acc), c| {
                     let mut new_length = length;
@@ -115,9 +125,7 @@ pub fn wrap_text<'a>(
             }
         })
         .map(|array| String::from(array))
-        .collect_vec();
-
-    wrapped
+    // .collect_vec();
 }
 
 #[cfg(test)]
@@ -130,16 +138,16 @@ mod tests {
     fn test_wrap_text() {
         let tab_size = 8;
         // Simple cases
-        let res = wrap_text("1234567890abc", &5, &tab_size, false);
+        let res = wrap_text("1234567890abc", &5, &tab_size, false).collect_vec();
         assert_eq!(vec!["12345", "67890", "abc"], res);
 
-        let res = wrap_text("1234567890abc", &15, &tab_size, false);
+        let res = wrap_text("1234567890abc", &15, &tab_size, false).collect_vec();
         assert_eq!(vec!["1234567890abc"], res);
 
         // Got coloring
         let blue = format!("aaaaabbbbbzzzzz").blue().to_string();
 
-        let res = wrap_text(&blue, &5, &tab_size, false);
+        let res = wrap_text(&blue, &5, &tab_size, false).collect_vec();
         assert_eq!(
             vec![
                 "\u{1b}[34maaaaa\u{1b}[0m",
@@ -155,7 +163,7 @@ mod tests {
             .underline()
             .to_string();
 
-        let res = wrap_text(&blue_bold_underline, &5, &tab_size, false);
+        let res = wrap_text(&blue_bold_underline, &5, &tab_size, false).collect_vec();
 
         assert_eq!(
             vec![
@@ -172,7 +180,7 @@ mod tests {
 
         let blue_bold_underline = format!("{begin}{middle}{end}").underline().to_string();
 
-        let res = wrap_text(&blue_bold_underline, &5, &tab_size, false);
+        let res = wrap_text(&blue_bold_underline, &5, &tab_size, false).collect_vec();
         assert_eq!(
             vec![
                 "\u{1b}[4m\u{1b}[34maaaaa\u{1b}[0m",
@@ -182,7 +190,7 @@ mod tests {
             res
         );
 
-        let res = wrap_text(&"\taaaaaaaabbbbbbbb".to_string(), &8, &tab_size, false);
+        let res = wrap_text(&"\taaaaaaaabbbbbbbb".to_string(), &8, &tab_size, false).collect_vec();
 
         println!("{res:?}");
 

@@ -33,7 +33,6 @@ pub fn padding_and_wrap(
 
     let mut result = vec![];
     for (line, s) in wrap_text(&colored_text, &text_size, &8, true)
-        .iter()
         .enumerate()
     {
         if line == 0 {
@@ -56,7 +55,8 @@ pub fn color_submatch(text: &String, submatches: &Vec<(u32, u32)>) -> Option<Str
     for (start, end) in submatches.iter() {
         assert!(
             (*end as usize) <= matched_text.len(),
-            "Cannot color submatches, text is shorter than submatches {end} {}", matched_text.len()
+            "Cannot color submatches, text is shorter than submatches {end} {}",
+            matched_text.len()
         );
 
         let begin = String::from(&matched_text[(cursor as usize)..(*start as usize)]);
@@ -166,22 +166,34 @@ mod tests {
         let colored = color_submatch(&text, &submatches);
         println!("{colored:?}");
         assert_eq!(colored.is_some(), true);
-        assert_eq!("\u{1b}[1;34maaaaabbbbbccccc\u{1b}[0mdddddeeeee", colored.unwrap());
+        assert_eq!(
+            "\u{1b}[1;34maaaaabbbbbccccc\u{1b}[0mdddddeeeee",
+            colored.unwrap()
+        );
 
         let submatches = vec![(0, 5)];
         let colored = color_submatch(&text, &submatches);
         assert_eq!(colored.is_some(), true);
-        assert_eq!("\u{1b}[1;34maaaaa\u{1b}[0mbbbbbcccccdddddeeeee", colored.unwrap());
+        assert_eq!(
+            "\u{1b}[1;34maaaaa\u{1b}[0mbbbbbcccccdddddeeeee",
+            colored.unwrap()
+        );
 
         let submatches = vec![(10, 25)];
         let colored = color_submatch(&text, &submatches);
         assert_eq!(colored.is_some(), true);
-        assert_eq!("aaaaabbbbb\u{1b}[1;34mcccccdddddeeeee\u{1b}[0m", colored.unwrap());
+        assert_eq!(
+            "aaaaabbbbb\u{1b}[1;34mcccccdddddeeeee\u{1b}[0m",
+            colored.unwrap()
+        );
 
         let submatches = vec![(0, 24)];
         let colored = color_submatch(&text, &submatches);
         assert_eq!(colored.is_some(), true);
-        assert_eq!("\u{1b}[1;34maaaaabbbbbcccccdddddeeee\u{1b}[0me", colored.unwrap());
+        assert_eq!(
+            "\u{1b}[1;34maaaaabbbbbcccccdddddeeee\u{1b}[0me",
+            colored.unwrap()
+        );
 
         let submatches = vec![(0, 26)];
         let result = panic::catch_unwind(|| {
