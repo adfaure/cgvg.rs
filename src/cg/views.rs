@@ -3,14 +3,16 @@ use colored::Colorize;
 use crate::ripgrep_json::Match;
 use crate::{number_of_digits, pad_number, wrap_text};
 
-pub fn padding_and_wrap(
-    colored_text: &String,
-    line_number: &u32,
-    idx: &u32,
-    terminal_size: &u32,
+/// Add padding and wrap text to fit the terminal_size.
+/// I
+pub fn padding_and_wrap<'a>(
+    colored_text: &'a String,
+    line_number: &'a u32,
+    idx: &'a u32,
+    terminal_size: &'a u32,
     line_number_max: Option<u32>,
     idx_max: Option<u32>,
-) -> Vec<String> {
+) -> impl Iterator<Item = String> + 'a {
     let line_number_str = pad_number(
         *line_number,
         number_of_digits(&line_number_max.unwrap_or(*line_number)),
@@ -31,16 +33,13 @@ pub fn padding_and_wrap(
 
     let text_size = terminal_size - prefix_size;
 
-    let mut result = vec![];
-    for (line, s) in wrap_text(&colored_text, &text_size, &8, true).enumerate() {
+    wrap_text(&colored_text, text_size, 8, true).enumerate().map(move |(line, s)| {
         if line == 0 {
-            result.push(format!("{prefix}{s}"));
+            format!("{prefix}{s}")
         } else {
-            result.push(format!("{padding} {s}"));
+            format!("{padding} {s}")
         }
-    }
-
-    return result;
+    })
 }
 
 /// Color subranges of a string
@@ -131,7 +130,7 @@ pub fn match_view(matched: &Vec<(Match, u32)>, terminal_size: &u32, max_text_siz
                     _ => panic!(),
                 };
 
-                for line in lines_to_print.iter() {
+                for line in lines_to_print {
                     println!("{line}");
                 }
             }

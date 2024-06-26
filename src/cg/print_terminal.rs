@@ -61,8 +61,8 @@ pub fn pad_number(number: u32, max_size: u32) -> String {
 /// - if `fill_end` is true, then empty spaces are added at the end of each wrapped line.
 pub fn wrap_text<'a>(
     text: &'a str,
-    max_length: &'a u32,
-    tab_size: &'a u32,
+    max_length: u32,
+    tab_size: u32,
     fill_end: bool,
 ) -> impl Iterator<Item = String> + 'a {
     // I need to keep track of the current style in order to apply it
@@ -70,9 +70,9 @@ pub fn wrap_text<'a>(
     let mut current_style: Vec<String> = vec![];
 
     iter_colored(text)
-        .map(|c| {
+        .map(move |c| {
             if c == "\t" {
-                return iter::repeat(" ".to_string()).take(*tab_size as usize);
+                return iter::repeat(" ".to_string()).take(tab_size as usize);
             } else {
                 return iter::repeat(c).take(1);
             }
@@ -98,7 +98,7 @@ pub fn wrap_text<'a>(
                         }
                     }
 
-                    if new_length == *max_length {
+                    if new_length == max_length {
                         if !current_style.is_empty() {
                             current_style = current_style.clone();
                             acc.push("\u{1b}[0m".to_string());
@@ -117,7 +117,7 @@ pub fn wrap_text<'a>(
             // harder to clean than to ignore, and I think ignoring wont change the style
             if len == 0 {
                 None
-            } else if fill_end && &len < max_length {
+            } else if fill_end && len < max_length {
                 let padding = std::iter::repeat(" ")
                     .take((max_length - len) as usize)
                     .collect::<String>();
@@ -141,16 +141,16 @@ mod tests {
     fn test_wrap_text() {
         let tab_size = 8;
         // Simple cases
-        let res = wrap_text("1234567890abc", &5, &tab_size, false).collect_vec();
+        let res = wrap_text("1234567890abc", 5, tab_size, false).collect_vec();
         assert_eq!(vec!["12345", "67890", "abc"], res);
 
-        let res = wrap_text("1234567890abc", &15, &tab_size, false).collect_vec();
+        let res = wrap_text("1234567890abc", 15, tab_size, false).collect_vec();
         assert_eq!(vec!["1234567890abc"], res);
 
         // Got coloring
         let blue = format!("aaaaabbbbbzzzzz").blue().to_string();
 
-        let res = wrap_text(&blue, &5, &tab_size, false).collect_vec();
+        let res = wrap_text(&blue, 5, tab_size, false).collect_vec();
         assert_eq!(
             vec![
                 "\u{1b}[34maaaaa\u{1b}[0m",
@@ -166,7 +166,7 @@ mod tests {
             .underline()
             .to_string();
 
-        let res = wrap_text(&blue_bold_underline, &5, &tab_size, false).collect_vec();
+        let res = wrap_text(&blue_bold_underline, 5, tab_size, false).collect_vec();
 
         assert_eq!(
             vec![
@@ -183,7 +183,7 @@ mod tests {
 
         let blue_bold_underline = format!("{begin}{middle}{end}").underline().to_string();
 
-        let res = wrap_text(&blue_bold_underline, &5, &tab_size, false).collect_vec();
+        let res = wrap_text(&blue_bold_underline, 5, tab_size, false).collect_vec();
         assert_eq!(
             vec![
                 "\u{1b}[4m\u{1b}[34maaaaa\u{1b}[0m",
@@ -193,7 +193,7 @@ mod tests {
             res
         );
 
-        let res = wrap_text(&"\taaaaaaaabbbbbbbb".to_string(), &8, &tab_size, false).collect_vec();
+        let res = wrap_text(&"\taaaaaaaabbbbbbbb".to_string(), 8, tab_size, false).collect_vec();
 
         println!("{res:?}");
 
