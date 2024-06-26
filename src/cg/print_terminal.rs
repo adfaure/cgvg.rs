@@ -128,7 +128,6 @@ pub fn wrap_text<'a>(
             }
         })
         .map(|array| String::from(array))
-    // .collect_vec();
 }
 
 #[cfg(test)]

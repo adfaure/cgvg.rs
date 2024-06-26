@@ -4,7 +4,7 @@ use crate::ripgrep_json::Match;
 use crate::{number_of_digits, pad_number, wrap_text};
 
 /// Add padding and wrap text to fit the terminal_size.
-/// I
+/// Return an iterator over strings with the lines wrapped and padded
 pub fn padding_and_wrap<'a>(
     colored_text: &'a String,
     line_number: &'a u32,
@@ -72,7 +72,17 @@ pub fn color_submatch(text: &String, submatches: &Vec<(u32, u32)>) -> Option<Str
     Some(result)
 }
 
+/// Function that prints a record from rigpgrep in the terminal.
 ///
+/// The records will be treated with the following steps:
+/// - First it loops from all the records to find the max line and index value. That is required to
+/// know the padding size of the final display lines.
+/// - Secondly for each record it prints what needs to be displayed:
+///     - For the begin and end it prints the matched file and a line break.
+///     - For each individual match it wraps, padds and colors the text.
+///
+/// `max_text_size` enables to not displayed matched text that will be too large to display, and
+/// that will be cumbersome to read for the user.
 pub fn match_view(matched: &Vec<(Match, u32)>, terminal_size: &u32, max_text_size: Option<&u32>) {
     let (mut max_idx, mut max_line) = (0, 0);
     for (m, idx) in matched.iter() {
@@ -84,8 +94,8 @@ pub fn match_view(matched: &Vec<(Match, u32)>, terminal_size: &u32, max_text_siz
             _ => {}
         };
     }
-    let mut i = matched.iter();
 
+    let mut i = matched.iter();
     while let Some(m) = i.next() {
         let (record, idx) = m;
         match &record {
