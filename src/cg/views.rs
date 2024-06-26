@@ -32,9 +32,7 @@ pub fn padding_and_wrap(
     let text_size = terminal_size - prefix_size;
 
     let mut result = vec![];
-    for (line, s) in wrap_text(&colored_text, &text_size, &8, true)
-        .enumerate()
-    {
+    for (line, s) in wrap_text(&colored_text, &text_size, &8, true).enumerate() {
         if line == 0 {
             result.push(format!("{prefix}{s}"));
         } else {
@@ -45,27 +43,20 @@ pub fn padding_and_wrap(
     return result;
 }
 
+/// Color subranges of a string
 pub fn color_submatch(text: &String, submatches: &Vec<(u32, u32)>) -> Option<String> {
     let mut color_submatches = String::from("");
     let mut cursor = 0;
 
-    // FIXME: Don't trim here
-    let matched_text = String::from(text.trim_end_matches('\n'));
-
     for (start, end) in submatches.iter() {
         assert!(
-            (*end as usize) <= matched_text.len(),
+            (*end as usize) <= text.len(),
             "Cannot color submatches, text is shorter than submatches {end} {}",
-            matched_text.len()
+            text.len()
         );
 
-        let begin = String::from(&matched_text[(cursor as usize)..(*start as usize)]);
-        let submatch_str = format!(
-            "{}",
-            matched_text[(*start as usize)..(*end as usize)]
-                .blue()
-                .bold()
-        );
+        let begin = String::from(&text[(cursor as usize)..(*start as usize)]);
+        let submatch_str = format!("{}", text[(*start as usize)..(*end as usize)].blue().bold());
 
         cursor = *end;
 
@@ -74,7 +65,7 @@ pub fn color_submatch(text: &String, submatches: &Vec<(u32, u32)>) -> Option<Str
 
     color_submatches = format!(
         "{color_submatches}{}",
-        &matched_text[(cursor as usize)..].to_string()
+        &text[(cursor as usize)..].to_string()
     );
 
     let result = color_submatches;
@@ -82,6 +73,7 @@ pub fn color_submatch(text: &String, submatches: &Vec<(u32, u32)>) -> Option<Str
     Some(result)
 }
 
+///
 pub fn match_view(matched: &Vec<(Match, u32)>, terminal_size: &u32, max_text_size: Option<&u32>) {
     let (mut max_idx, mut max_line) = (0, 0);
     for (m, idx) in matched.iter() {
@@ -102,6 +94,7 @@ pub fn match_view(matched: &Vec<(Match, u32)>, terminal_size: &u32, max_text_siz
                 lines, submatches, ..
             } => {
                 let colored_match =
+                    // In case the string is too long, it is pointless to print it.
                     if max_text_size.is_some_and(|max| lines.text.len() > *max as usize) {
                         Some(
                             format!(
@@ -114,7 +107,7 @@ pub fn match_view(matched: &Vec<(Match, u32)>, terminal_size: &u32, max_text_siz
                         )
                     } else {
                         color_submatch(
-                            &lines.text,
+                            &String::from(lines.text.trim_end_matches('\n')),
                             &submatches.iter().map(|s| (s.start, s.end)).collect(),
                         )
                     };

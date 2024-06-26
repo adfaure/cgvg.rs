@@ -65,7 +65,9 @@ pub fn wrap_text<'a>(
     tab_size: &'a u32,
     fill_end: bool,
 ) -> impl Iterator<Item = String> + 'a {
-    let mut memory: Vec<String> = vec![];
+    // I need to keep track of the current style in order to apply it
+    // when we need to add a line break.
+    let mut current_style: Vec<String> = vec![];
 
     iter_colored(text)
         .map(|c| {
@@ -78,7 +80,7 @@ pub fn wrap_text<'a>(
         .flatten()
         .batching(move |it| {
             let (len, temp) = it
-                .fold_while((0, memory.clone()), |(length, mut acc), c| {
+                .fold_while((0, current_style.clone()), |(length, mut acc), c| {
                     let mut new_length = length;
 
                     acc.push(c.clone());
@@ -88,17 +90,17 @@ pub fn wrap_text<'a>(
                     } else {
                         match c.as_str() {
                             "\u{1b}[0m" => {
-                                memory.clear();
+                                current_style.clear();
                             }
                             _ => {
-                                memory.push(c.clone());
+                                current_style.push(c.clone());
                             }
                         }
                     }
 
                     if new_length == *max_length {
-                        if !memory.is_empty() {
-                            memory = memory.clone();
+                        if !current_style.is_empty() {
+                            current_style = current_style.clone();
                             acc.push("\u{1b}[0m".to_string());
                         }
 
@@ -119,6 +121,7 @@ pub fn wrap_text<'a>(
                 let padding = std::iter::repeat(" ")
                     .take((max_length - len) as usize)
                     .collect::<String>();
+
                 Some(format!("{line}{padding}"))
             } else {
                 Some(line)
