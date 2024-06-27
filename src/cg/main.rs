@@ -21,7 +21,7 @@ static DEFAULT_MATCH_FILE: &'static str = "~/.cgvg.match";
 static DEFAULT_RG: &'static str = "rg";
 static DEFAULT_RG_ARGS: [&str; 3] = ["--json", "--sort", "path"];
 
-/// rg find code using ripgrep
+/// cg find code using ripgrep
 #[derive(Parser, Debug)]
 #[command(version, about)]
 struct Args {
