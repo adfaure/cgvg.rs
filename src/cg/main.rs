@@ -19,6 +19,7 @@ use print_terminal::{number_of_digits, pad_number, wrap_text};
 
 static DEFAULT_MATCH_FILE: &'static str = "~/.cgvg.match";
 static DEFAULT_RG: &'static str = "rg";
+static DEFAULT_RG_ARGS: [&str; 3] = ["--json", "--sort", "path"];
 
 /// rg find code using ripgrep
 #[derive(Parser, Debug)]
@@ -115,9 +116,13 @@ async fn main() -> ExitCode {
     );
 
     let mut cmd = Command::new(args.rg_bin_path)
-        .args(command_args)
-        //TODO: Instead check if the flag is already present
         .arg("--json")
+        // Make it configurable with a env variable since parsing
+        // from command line is tricky (due to the fact that we need
+        // to pass options starting with --) I think that the best would be either a configuration
+        // file or through env vars
+        .args(DEFAULT_RG_ARGS.iter())
+        .args(command_args)
         .stdout(std::process::Stdio::piped())
         .spawn()
         .expect("failed to execute process");
